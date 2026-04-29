@@ -1,13 +1,16 @@
 import React, { useRef } from "react";
 import {
   Animated,
+  Dimensions,
   ImageBackground,
   StyleSheet,
   Text,
   TouchableWithoutFeedback,
-  View
+  View,
 } from "react-native";
 import EditDeletePopUp from "./EditDeletePopUp";
+
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 interface FlashcardFolderProps {
   folderId: string;
@@ -48,9 +51,10 @@ const FlashcardFolderCard: React.FC<FlashcardFolderProps> = ({
     }).start();
   };
 
+
+  const containerStyle = [styles.folderContainer, !image && styles.defaultBg];
   const containerProps: any = {
-    className:
-      "flex-1 bg-[#FFF9E5] rounded-2xl items-center justify-center overflow-hidden p-3",
+    style: containerStyle,
   };
 
   if (image) {
@@ -59,79 +63,126 @@ const FlashcardFolderCard: React.FC<FlashcardFolderProps> = ({
   }
 
   return (
-<TouchableWithoutFeedback
-  onPressIn={handlePressIn}
-  onPressOut={handlePressOut}
-  onPress={() => onFolderPress(folderId)}
-  disabled={isPopupVisible}
->
-  <View style={styles.cardContainer}>
-    <Animated.View style={{ transform: [{ scale: scaleAnim }] }} className="flex-1">
-        {React.createElement(
-          image ? ImageBackground : View,
-          containerProps,
-          <>
-            {image && <View className="absolute inset-0 bg-white/30" />}
+    <TouchableWithoutFeedback
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      onPress={() => onFolderPress(folderId)}
+      disabled={isPopupVisible}
+    >
+      <View style={styles.cardWrapper}>
+        <Animated.View style={[styles.flexFill, { transform: [{ scale: scaleAnim }] }]}>
+          {React.createElement(
+            image ? ImageBackground : View,
+            containerProps,
+            <>
+              {image && <View style={styles.imageOverlay} />}
 
-            {/* TOP GREEN BAR */}
-            <View className="absolute top-0 left-0 right-0 h-[20%] bg-[#39675F] z-10 flex-row justify-end items-center px-2">
-              {[0, 1, 2].map((i) => (
-                <TouchableWithoutFeedback
-                  key={i}
-                  onPress={() =>
-                    setPopupVisibleFolder(isPopupVisible ? null : folderId)
-                  }
-                >
-                  <View
-                    className="w-2 h-2 rounded-full bg-white mx-[2px]"
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                  />
-                </TouchableWithoutFeedback>
-              ))}
-            </View>
-
-            {/* POPUP */}
-            {isPopupVisible && (
-              <View className="absolute top-2 right-2 z-20">
-                <EditDeletePopUp
-                  onEdit={() => {
-                    onFolderEdit(folderId);
-                    setPopupVisibleFolder(null);
-                  }}
-                  onDelete={() => {
-                    onFolderDelete(folderId);
-                    setPopupVisibleFolder(null);
-                  }}
-                />
+              {/* TOP GREEN BAR */}
+              <View style={styles.topBar}>
+                {[0, 1, 2].map((i) => (
+                  <TouchableWithoutFeedback
+                    key={i}
+                    onPress={() =>
+                      setPopupVisibleFolder(isPopupVisible ? null : folderId)
+                    }
+                  >
+                    <View
+                      style={styles.dot}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    />
+                  </TouchableWithoutFeedback>
+                ))}
               </View>
-            )}
 
-            {/* TITLE */}
-            <Text className="text-3xl font-bold text-[#553A00] px-2">{text}</Text>
-          </>
-        )}
-      </Animated.View>
-  </View>
-      
+              {/* POPUP */}
+              {isPopupVisible && (
+                <View style={styles.popupContainer}>
+                  <EditDeletePopUp
+                    onEdit={() => {
+                      onFolderEdit(folderId);
+                      setPopupVisibleFolder(null);
+                    }}
+                    onDelete={() => {
+                      onFolderDelete(folderId);
+                      setPopupVisibleFolder(null);
+                    }}
+                  />
+                </View>
+              )}
+
+              {/* TITLE */}
+              <Text style={styles.titleText}>{text}</Text>
+            </>
+          )}
+        </Animated.View>
+      </View>
     </TouchableWithoutFeedback>
   );
 };
 
-
 export default FlashcardFolderCard;
 
 const styles = StyleSheet.create({
-  cardContainer: {
-    // Shadow for iOS
+  cardWrapper: {
+    flex: 1,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 5 },
     shadowOpacity: 0.3,
-    shadowRadius: 10,
-    
-    // Elevation for Android (Shadows work differently on Android)
-    elevation: 8, 
-    
-    // Ensure background is set, otherwise shadows sometimes don't show
-    backgroundColor: 'transparent', 
+    shadowRadius: 3,
+    elevation: 8,
+    backgroundColor: "transparent",
+  },
+  flexFill: {
+    flex: 1,
+  },
+  folderContainer: {
+    flex: 1,
+    borderRadius: 16,
+    justifyContent: "center",
+    alignItems: "center", 
+    overflow: "hidden",
+    padding: SCREEN_WIDTH * 0.03, 
+    marginBottom: 16,
+  },
+  defaultBg: {
+    backgroundColor: "#FFF9E5",
+  },
+  imageOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(255, 255, 255, 0.3)",
+  },
+  topBar: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: "22%", 
+    backgroundColor: "#39675F",
+    zIndex: 10,
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    alignItems: "center",
+    paddingHorizontal: 12,
+  },
+  dot: {
+    width: SCREEN_WIDTH * 0.02, // Responsive dot size
+    height: SCREEN_WIDTH * 0.02,
+    borderRadius: SCREEN_WIDTH * 0.01,
+    backgroundColor: "white",
+    marginHorizontal: 2,
+  },
+  popupContainer: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    zIndex: 20,
+  },
+  titleText: {
+    fontSize: SCREEN_WIDTH * 0.075,
+    fontWeight: "bold",
+    color: "#553A00",
+    marginTop: SCREEN_WIDTH * 0.03, 
+    paddingHorizontal: 8,
+    textAlign: "center",
   },
 });
