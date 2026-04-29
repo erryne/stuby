@@ -14,14 +14,16 @@ import {
   Dimensions,
   ImageBackground,
   ScrollView,
+  StyleSheet,
   Text,
-  View,
+  View
 } from "react-native";
 
 import AddFloatingButton from "@/components/AddFloatingButton";
 import DeleteFlashcardFolderModal from "@/components/DeleteFlashcardFolderModal";
 import FlashcardFolderCard from "@/components/FlashcardFolderCard";
-import { auth, db } from "../../firebaseConfig"; // Ensure this path is correct
+import TitleHeader from "../../components/TitleHeader";
+import { auth, db } from "../../firebaseConfig";
 
 const { width } = Dimensions.get("window");
 
@@ -113,22 +115,22 @@ export default function FlashcardFolderScreen() {
     setPopupVisibleFolderId(null);
   };
 
+
+
+
+
+
   return (
-    <ImageBackground
-      source={require("../../assets/images/flashcardBg.png")}
-      className="flex-1"
-      resizeMode="cover"
-    >
-      <Text
-        className="text-[#FDE6B1] mt-12 mb-8 text-4xl font-black text-center tracking-widest"
-        style={{
-          textShadowColor: "rgba(0, 0, 0, 0.4)",
-          textShadowOffset: { width: 2, height: 2 },
-          textShadowRadius: 4,
-        }}
+    <View style={styles.container}>
+      <ImageBackground
+        source={require("../../assets/images/flashcardBg.png")}
+        style={styles.background}
+        resizeMode="cover"
       >
-        FLASHCARD
-      </Text>
+      
+      <View style={styles.contentContainer}>
+
+      <TitleHeader image={require("../../assets/images/flashcardTitle.png")} />
 
       {loading ? (
         <View className="flex-1 justify-center">
@@ -136,7 +138,8 @@ export default function FlashcardFolderScreen() {
         </View>
       ) : (
         <ScrollView
-          contentContainerStyle={{ alignItems: "center", paddingBottom: 100 }}
+          className="overflow-hidden rounded-2xl shadow-md mb-4"
+          style={[styles.folderCard, { width: width * 0.9 }]}
           showsVerticalScrollIndicator={false}
         >
           {flashcardFolders.map((folder) => (
@@ -174,6 +177,34 @@ export default function FlashcardFolderScreen() {
         onCancel={() => setDeleteModalVisible(false)}
         onConfirm={handleDeleteFolder}
       />
-    </ImageBackground>
+
+      </View>
+
+      </ImageBackground>
+    </View>
+        
+
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  background: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+  },
+  contentContainer: {
+    flex: 1, // Added this so it fills the screen height
+    paddingHorizontal: "6%",
+    marginTop: "5%", // Slightly reduced to fit TitleHeader better
+    alignItems: "center",
+  },
+  folderCard: {
+    // This handles the ScrollView container style
+    width: width * 0.9,
+    marginTop: 10,
+  },
+});
