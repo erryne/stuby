@@ -197,13 +197,13 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   contentContainer: {
-    flex: 1, // Added this so it fills the screen height
+    flex: 1, 
     paddingHorizontal: "6%",
-    marginTop: "5%", // Slightly reduced to fit TitleHeader better
+    marginTop: "5%", 
     alignItems: "center",
   },
   folderCard: {
-    // This handles the ScrollView container style
+    
     width: width * 0.9,
     marginTop: 10,
   },

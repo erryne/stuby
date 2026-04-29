@@ -1,10 +1,11 @@
 import React, { useRef } from "react";
 import {
+  Animated,
   ImageBackground,
+  StyleSheet,
   Text,
   TouchableWithoutFeedback,
-  View,
-  Animated,
+  View
 } from "react-native";
 import EditDeletePopUp from "./EditDeletePopUp";
 
@@ -58,22 +59,14 @@ const FlashcardFolderCard: React.FC<FlashcardFolderProps> = ({
   }
 
   return (
-    <TouchableWithoutFeedback
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
-      onPress={() => onFolderPress(folderId)}
-      disabled={isPopupVisible}
-
-       style={{
-            
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 5 },
-              shadowOpacity: 0.3,
-              shadowRadius: 10,
-              
-            }}
-    >
-      <Animated.View style={{ transform: [{ scale: scaleAnim }] }} className="flex-1">
+<TouchableWithoutFeedback
+  onPressIn={handlePressIn}
+  onPressOut={handlePressOut}
+  onPress={() => onFolderPress(folderId)}
+  disabled={isPopupVisible}
+>
+  <View style={styles.cardContainer}>
+    <Animated.View style={{ transform: [{ scale: scaleAnim }] }} className="flex-1">
         {React.createElement(
           image ? ImageBackground : View,
           containerProps,
@@ -118,8 +111,27 @@ const FlashcardFolderCard: React.FC<FlashcardFolderProps> = ({
           </>
         )}
       </Animated.View>
+  </View>
+      
     </TouchableWithoutFeedback>
   );
 };
 
+
 export default FlashcardFolderCard;
+
+const styles = StyleSheet.create({
+  cardContainer: {
+    // Shadow for iOS
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    
+    // Elevation for Android (Shadows work differently on Android)
+    elevation: 8, 
+    
+    // Ensure background is set, otherwise shadows sometimes don't show
+    backgroundColor: 'transparent', 
+  },
+});

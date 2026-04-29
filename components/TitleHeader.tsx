@@ -20,7 +20,6 @@ const styles = StyleSheet.create({
     height: 80, // Fixed height for the banner area
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 20,
   },
   image: {
     width: "100%",
