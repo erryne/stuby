@@ -179,7 +179,7 @@ const styles = StyleSheet.create({
     height: height * 0.24,
     marginBottom: height * 0.04,
     borderRadius: 16,
-    backgroundColor: "rgba(31, 41, 55, 0.5)",
+    backgroundColor: "rgba(31, 41, 55, 0.4)",
     overflow: "hidden",
     alignItems: "center",
     justifyContent: "center",
