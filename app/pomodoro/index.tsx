@@ -1,10 +1,11 @@
 import LottieView from "lottie-react-native";
-import React from "react";
 import {
   Alert,
   Dimensions,
   ImageBackground,
   Platform,
+  StatusBar,
+  StyleSheet,
   Text,
   TouchableOpacity,
   Vibration,
@@ -12,11 +13,11 @@ import {
 } from "react-native";
 import Svg, { Circle } from "react-native-svg";
 import { create } from "zustand";
+import TitleHeader from "../../components/TitleHeader";
 
-// --- Constants ---
-const { width } = Dimensions.get("window");
-const circleSize = width * 0.6;
-const strokeWidth = 10;
+const { width, height } = Dimensions.get("window");
+const circleSize = width * 0.72;
+const strokeWidth = 12;
 const radius = (circleSize - strokeWidth) / 2;
 const circumference = 2 * Math.PI * radius;
 
@@ -34,7 +35,6 @@ const DEFAULT_TIMES: Record<ModeType, number> = {
   [MODE.LONG_BREAK]: 15 * 60,
 };
 
-// --- 1. Global Store ---
 interface TimerStore {
   mode: ModeType;
   isRunning: boolean;
@@ -53,37 +53,24 @@ export const useTimerStore = create<TimerStore>((set, get) => ({
   timers: { ...DEFAULT_TIMES },
 
   setMode: (mode) => {
-    if (globalInterval) {
-      clearInterval(globalInterval);
-      globalInterval = null;
-    }
+    if (globalInterval) { clearInterval(globalInterval); globalInterval = null; }
     set({ mode, isRunning: false });
   },
 
   toggle: () => {
     const wasRunning = get().isRunning;
     const nextRunning = !wasRunning;
-
     set({ isRunning: nextRunning });
-
     if (nextRunning) {
       if (globalInterval) clearInterval(globalInterval);
-      globalInterval = setInterval(() => {
-        get().tick();
-      }, 1000);
+      globalInterval = setInterval(() => get().tick(), 1000);
     } else {
-      if (globalInterval) {
-        clearInterval(globalInterval);
-        globalInterval = null;
-      }
+      if (globalInterval) { clearInterval(globalInterval); globalInterval = null; }
     }
   },
 
   reset: () => {
-    if (globalInterval) {
-      clearInterval(globalInterval);
-      globalInterval = null;
-    }
+    if (globalInterval) { clearInterval(globalInterval); globalInterval = null; }
     set((state) => ({
       isRunning: false,
       timers: { ...state.timers, [state.mode]: DEFAULT_TIMES[state.mode] },
@@ -92,52 +79,27 @@ export const useTimerStore = create<TimerStore>((set, get) => ({
 
   tick: () => {
     const { mode, timers, isRunning } = get();
-
     if (!isRunning) return;
-
     if (timers[mode] > 0) {
-      set({
-        timers: { ...timers, [mode]: timers[mode] - 1 },
-      });
+      set({ timers: { ...timers, [mode]: timers[mode] - 1 } });
     } else {
-      // --- AUTO-RESET LOGIC ---
-      if (globalInterval) {
-        clearInterval(globalInterval);
-        globalInterval = null;
-      }
-
-      // Vibrate and Alert
-      const pattern =
-        Platform.OS === "android" ? [0, 500, 200, 500] : [0, 1000];
-      Vibration.vibrate(pattern);
-
-      // Reset the current mode's timer to default immediately
+      if (globalInterval) { clearInterval(globalInterval); globalInterval = null; }
+      Vibration.vibrate(Platform.OS === "android" ? [0, 500, 200, 500] : [0, 1000]);
       set((state) => ({
         isRunning: false,
-        timers: {
-          ...state.timers,
-          [state.mode]: DEFAULT_TIMES[state.mode],
-        },
+        timers: { ...state.timers, [state.mode]: DEFAULT_TIMES[state.mode] },
       }));
-
-      Alert.alert(
-        "Time's Up!",
-        `${mode} session is over. Timer has been reset.`,
-      );
+      Alert.alert("Time's Up!", `${mode} is over.`);
     }
   },
 }));
 
-// --- 2. Main UI Component ---
 export default function Pomodoro() {
   const { mode, timers, isRunning, setMode, toggle, reset } = useTimerStore();
   const secondsLeft = timers[mode];
 
   const formatTime = (seconds: number) => {
-    if (isNaN(seconds) || seconds < 0) return "00:00";
-    const m = Math.floor(seconds / 60)
-      .toString()
-      .padStart(2, "0");
+    const m = Math.floor(seconds / 60).toString().padStart(2, "0");
     const s = (seconds % 60).toString().padStart(2, "0");
     return `${m}:${s}`;
   };
@@ -146,71 +108,40 @@ export default function Pomodoro() {
   const strokeDashoffset = circumference * (1 - progress);
 
   return (
-    <ImageBackground
-      source={require("../../assets/images/pomodoroBg.png")}
-      className="flex-1"
-      resizeMode="cover"
-    >
-      <View className="flex-1 items-center pt-[10%]">
-        <Text className="text-[36px] font-extrabold text-[#1D1D1D] mb-[5%] tracking-[2px]">
-          POMODORO
-        </Text>
+    <View style={styles.container}>
+      <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
 
-        <View
-          style={{
-            width: "80%",
-            height: "80%",
-            backgroundColor: "#FFF9E5",
-            borderLeftWidth: 10,
-            borderRightWidth: 10,
-            borderColor: "#81967A",
-            justifyContent: "center",
-            alignItems: "center",
-            borderRadius: 8,
-          }}
-        >
+      <ImageBackground
+        source={require("../../assets/images/pomodoroBg.png")}
+        style={styles.background}
+        resizeMode="cover"
+      >
+        <View style={styles.contentContainer}>
+
+          {/* <TitleHeader image={require("../../assets/images/pomodoroHeader.png")} /> */}
+
           {/* Mode Tabs */}
-          <View className="flex-row justify-between gap-2 mb-[12%]">
+          <View style={styles.tabsRow}>
             {(Object.values(MODE) as ModeType[]).map((tab) => (
               <TouchableOpacity
                 key={tab}
                 onPress={() => setMode(tab)}
-                className={`rounded-[10px] px-3 py-1.5 ${
-                  mode === tab ? "bg-[#B39287]" : "bg-[#E6D3C3]"
-                }`}
-                activeOpacity={0.8}
+                style={[styles.tabBtn, mode === tab && styles.tabBtnActive]}
+                activeOpacity={0.7}
               >
-                <Text
-                  className={`text-[12px] font-bold ${
-                    mode === tab ? "text-[#2C1F16]" : "text-[#7A6654]"
-                  }`}
-                >
+                <Text style={[styles.tabText, mode === tab && styles.tabTextActive]}>
                   {tab}
                 </Text>
               </TouchableOpacity>
             ))}
           </View>
 
-          {/* Progress Circle Container */}
-          <View
-            className="justify-center items-center mb-[6%]"
-            style={{ width: circleSize, height: circleSize }}
-          >
-            <Svg
-              width={circleSize}
-              height={circleSize}
-              style={{ position: "absolute", top: 0, left: 0 }}
-            >
+          {/* Progress Circle */}
+          <View style={[styles.circleWrap, { width: circleSize, height: circleSize }]}>
+            <Svg width={circleSize} height={circleSize} style={StyleSheet.absoluteFill}>
+              <Circle stroke="#A8B6A5" fill="#FDFBEA" cx={circleSize / 2} cy={circleSize / 2} r={radius} strokeWidth={strokeWidth} />
               <Circle
-                stroke="#D9D9D9"
-                fill="none"
-                cx={circleSize / 2}
-                cy={circleSize / 2}
-                r={radius}
-                strokeWidth={strokeWidth}
-              />
-              <Circle
-                stroke="#A8B6A5"
+                stroke="#81967A"
                 fill="none"
                 cx={circleSize / 2}
                 cy={circleSize / 2}
@@ -223,60 +154,149 @@ export default function Pomodoro() {
                 originX={circleSize / 2}
                 originY={circleSize / 2}
               />
+              <Circle cx={circleSize / 2} cy={strokeWidth / 2} r={8} fill="#3A5245" />
             </Svg>
-
             <LottieView
               source={
                 mode === MODE.POMODORO
                   ? require("../../assets/animations/Stuby.json")
                   : require("../../assets/animations/stuby-eating.json")
               }
-              style={
-                mode === MODE.POMODORO
-                  ? { width: "80%", aspectRatio: 1 }
-                  : { width: "90%", aspectRatio: 1 }
-              }
-              resizeMode="contain"
+              style={{ width: "75%", aspectRatio: 1 }}
               autoPlay
               loop
             />
           </View>
 
-          {/* Digital Timer */}
-          <Text
-            className={`text-[40px] font-bold mb-[6%] ${
-              secondsLeft < 10 && secondsLeft > 0
-                ? "text-red-500"
-                : "text-[#3B3B3B]"
-            }`}
-          >
-            {formatTime(secondsLeft)}
-          </Text>
+          {/* Timer */}
+          <Text style={styles.timerText}>{formatTime(secondsLeft)}</Text>
 
-          {/* Control Buttons */}
-          <View className="items-center w-full gap-3">
+          {/* Buttons */}
+          <View style={styles.buttonsContainer}>
+
+            {/* Play / Pause */}
             <TouchableOpacity
-              className="bg-[#E6D3C3] rounded-[15px] px-[50px] py-3 w-[200px] items-center shadow-sm"
               onPress={toggle}
-              activeOpacity={0.7}
+              style={[styles.playBtn, isRunning && styles.playBtnActive]}
+              activeOpacity={0.75}
             >
-              <Text className="font-bold text-[18px] text-[#4A3C30]">
+              <Text style={styles.playBtnText}>
                 {isRunning ? "PAUSE" : "PLAY"}
               </Text>
             </TouchableOpacity>
 
+            {/* Reset */}
             <TouchableOpacity
-              className="py-2"
               onPress={reset}
-              activeOpacity={0.6}
+              style={styles.resetBtn}
+              activeOpacity={0.7}
             >
-              <Text className="font-bold text-[14px] text-[#7A6654] tracking-[1px]">
-                RESET CURRENT
-              </Text>
+              <Text style={styles.resetBtnText}>Reset Current</Text>
             </TouchableOpacity>
+
           </View>
         </View>
-      </View>
-    </ImageBackground>
+      </ImageBackground>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  background: {
+    flex: 1,
+    width,
+    height,
+  },
+  contentContainer: {
+    flex: 1,
+    paddingHorizontal: "6%",
+    marginTop: "5%",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  // --- Tabs ---
+  tabsRow: {
+    flexDirection: "row",
+    backgroundColor: "#FBFFE4",
+    borderRadius: 999,
+    padding: 4,
+    marginBottom: 40,
+  },
+  tabBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+  },
+  tabBtnActive: {
+    backgroundColor: "#D7A38F",
+  },
+  tabText: {
+    fontSize: 13,
+    fontWeight: "500",
+    color: "rgba(74, 60, 48, 0.6)",
+  },
+  tabTextActive: {
+    color: "#4A3C30",
+  },
+
+  // --- Circle ---
+  circleWrap: {
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 24,
+  },
+
+  // --- Timer ---
+  timerText: {
+    fontSize: 50,
+    fontWeight: "700",
+    color: "#3B3B3B",
+    marginBottom: 24,
+    letterSpacing: -2,
+  },
+
+  // --- Buttons ---
+  buttonsContainer: {
+    alignItems: "center",
+    width: "100%",
+    gap: 12,
+  },
+  playBtn: {
+    width: "50%",
+    backgroundColor: "#FBFFE4",
+    borderRadius: 16,
+    paddingVertical: 16,
+    alignItems: "center",
+    borderWidth: 1.5,
+    borderColor: "rgba(0,0,0,0.08)",
+  },
+  playBtnActive: {
+    backgroundColor: "rgba(0,0,0,0.16)",
+    borderColor: "rgba(0,0,0,0.14)",
+  },
+  playBtnText: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#4A3C30",
+    letterSpacing: 3,
+  },
+  resetBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    backgroundColor: "#FBFFE4",
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.08)",
+  },
+  resetBtnText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#7A6654",
+    letterSpacing: 1,
+    textTransform: "uppercase",
+  },
+});
