@@ -42,7 +42,6 @@ export default function NotepadScreen() {
   useEffect(() => {
     if (!user) return;
 
-    // Query notes where userId matches current user
     const q = query(
       collection(db, "notes"),
       where("userId", "==", user.uid),
@@ -76,7 +75,7 @@ export default function NotepadScreen() {
       note.content?.toLowerCase().includes(search.toLowerCase()),
   );
 
-  const renderNote = ({ item, index }: { item: Note; index: number }) => (
+  const renderNote = ({ item }: { item: Note }) => (
     <TouchableOpacity
       activeOpacity={0.7}
       style={{
@@ -84,15 +83,17 @@ export default function NotepadScreen() {
         paddingVertical: 20,
         borderBottomWidth: 1,
         borderBottomColor: "#D3CBB4",
-        backgroundColor: index === 0 ? "transparent" : "transparent",
+        backgroundColor: "transparent",
       }}
       onPress={() =>
+        // NAVIGATE TO ADDNOTE WITH EDIT MODE
         router.push({
-          pathname: "/notepad/editnote",
+          pathname: "/notepad/addnote",
           params: {
             id: item.id,
             title: item.title,
             content: item.content,
+            mode: "edit", // This triggers the 3-dots menu in AddNoteScreen
           },
         })
       }
@@ -128,8 +129,7 @@ export default function NotepadScreen() {
       resizeMode="cover"
     >
       <View style={{ flex: 1 }}>
-        {/* Section Title */}
-        <View style={{ marginTop: 40, marginBottom: 16 }}>
+        <View style={{ marginTop: 50, marginBottom: 16 }}>
           <Text
             style={{
               color: "#FDE6B1",
@@ -146,17 +146,16 @@ export default function NotepadScreen() {
           </Text>
         </View>
 
-        {/* Search Bar */}
-        <View style={{ marginHorizontal: 24, marginBottom: 24 }}>
+        <View style={{ marginHorizontal: 24, marginBottom: 15 }}>
           <View
             style={{
               flexDirection: "row",
               alignItems: "center",
-              borderWidth: 2,
+              borderWidth: 1,
               borderColor: "rgba(253, 230, 177, 0.6)",
-              borderRadius: 99,
+              borderRadius: 100,
               paddingHorizontal: 16,
-              height: 48,
+              height: 45,
               backgroundColor: "rgba(0,0,0,0.1)",
             }}
           >
@@ -171,7 +170,6 @@ export default function NotepadScreen() {
           </View>
         </View>
 
-        {/* Note List Container */}
         <View
           style={{
             flex: 1,
@@ -209,9 +207,7 @@ export default function NotepadScreen() {
                   fontWeight: "700",
                 }}
               >
-                {search
-                  ? "No matches found."
-                  : "Your notepad is empty. Tap the button below to add your first note!"}
+                {search ? "No matches found." : "Your notepad is empty."}
               </Text>
             </View>
           ) : (
@@ -225,7 +221,6 @@ export default function NotepadScreen() {
           )}
         </View>
 
-        {/* Floating Action Button (FAB) */}
         <AddFloatingButton onPress={() => router.push("/notepad/addnote")} />
       </View>
     </ImageBackground>

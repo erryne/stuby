@@ -204,6 +204,8 @@ export default function RootLayout() {
       >
         <Stack.Screen name="index" />
         <Stack.Screen name="login" options={{ headerShown: false }} />
+        <Stack.Screen name="register" options={{ headerShown: false }} />
+        <Stack.Screen name="verify" options={{ headerShown: false }} />
         <Stack.Screen name="profile/index" options={{ title: "Profile" }} />
         <Stack.Screen name="todo/index" />
         <Stack.Screen name="flashcard/index" />

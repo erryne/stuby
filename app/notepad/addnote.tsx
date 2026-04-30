@@ -1,28 +1,34 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
-    addDoc,
-    collection,
-    deleteDoc,
-    doc,
-    serverTimestamp,
-    updateDoc,
+  addDoc,
+  collection,
+  deleteDoc,
+  doc,
+  serverTimestamp,
+  updateDoc,
 } from "firebase/firestore";
 import React, { useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    ImageBackground,
-    Modal,
-    Pressable,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  ImageBackground,
+  Keyboard,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View,
 } from "react-native";
 
 // Firebase Config
 import EditDeletePopUp from "../../components/EditDeletePopUp";
+import GreenButton from "../../components/GreenButton";
 import { auth, db } from "../../firebaseConfig";
 
 export default function AddNoteScreen() {
@@ -37,14 +43,25 @@ export default function AddNoteScreen() {
   const [showMenu, setShowMenu] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
-  // Load existing data if in Edit Mode
-  useEffect(() => {
-    if (params.title) setTitle(params.title as string);
-    if (params.content) setContent(params.content as string);
-  }, [params]);
+  // Controls View vs Edit mode
+  const [isEditing, setIsEditing] = useState(false);
 
-  /* ---------------- LOGIC: SAVE / UPDATE ---------------- */
-  const handleSave = async () => {
+  /* ---------------- LOAD INITIAL DATA ---------------- */
+  useEffect(() => {
+    if (params.title)
+      setTitle(Array.isArray(params.title) ? params.title[0] : params.title);
+    if (params.content)
+      setContent(
+        Array.isArray(params.content) ? params.content[0] : params.content,
+      );
+
+    if (params.mode !== "edit") {
+      setIsEditing(true);
+    }
+  }, [params.title, params.content, params.mode]);
+
+  /* ---------------- SAVE / UPDATE LOGIC ---------------- */
+  const handleSaveOrUpdate = async () => {
     if (!title.trim() || !content.trim()) {
       Alert.alert(
         "Empty Fields",
@@ -52,26 +69,17 @@ export default function AddNoteScreen() {
       );
       return;
     }
-
-    if (!user) {
-      Alert.alert("Error", "You must be logged in to save notes.");
-      return;
-    }
-
     setLoading(true);
     try {
       if (params.mode === "edit" && params.id) {
-        // UPDATE EXISTING NOTE
-        const noteRef = doc(db, "notes", params.id as string);
-        await updateDoc(noteRef, {
+        await updateDoc(doc(db, "notes", params.id as string), {
           title: title.trim(),
           content: content.trim(),
           updatedAt: serverTimestamp(),
         });
       } else {
-        // CREATE NEW NOTE
         await addDoc(collection(db, "notes"), {
-          userId: user.uid, // Foreign Key linking to current user
+          userId: user?.uid,
           title: title.trim(),
           content: content.trim(),
           createdAt: serverTimestamp(),
@@ -79,24 +87,21 @@ export default function AddNoteScreen() {
       }
       router.back();
     } catch (error) {
-      console.error("Firestore Save Error:", error);
       Alert.alert("Error", "Could not save the note.");
     } finally {
       setLoading(false);
     }
   };
 
-  /* ---------------- LOGIC: DELETE ---------------- */
+  /* ---------------- DELETE LOGIC ---------------- */
   const handleDelete = async () => {
     if (!params.id) return;
-
     setLoading(true);
     try {
       await deleteDoc(doc(db, "notes", params.id as string));
       setShowDeleteModal(false);
       router.back();
     } catch (error) {
-      console.error("Firestore Delete Error:", error);
       Alert.alert("Error", "Could not delete the note.");
     } finally {
       setLoading(false);
@@ -106,130 +111,231 @@ export default function AddNoteScreen() {
   return (
     <ImageBackground
       source={require("../../assets/images/notepadBg.png")}
-      className="flex-1"
+      style={styles.background}
       resizeMode="cover"
     >
-      <View className="flex-1">
-        {/* Header Row */}
-        <View className="flex-row items-center justify-between px-5 mt-4 mb-4">
-          <View className="flex-row items-center flex-1">
-            <TouchableOpacity onPress={() => router.back()} className="mr-2">
-              <Ionicons name="chevron-back" size={35} color="#FDE6B1" />
-            </TouchableOpacity>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={{ flex: 1 }}
+      >
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View style={styles.container}>
+            {/* Header Row */}
+            <View style={styles.header}>
+              <View style={styles.headerLeft}>
+                <TouchableOpacity
+                  onPress={() => router.back()}
+                  style={styles.backButton}
+                >
+                  <Ionicons name="chevron-back" size={35} color="#FDE6B1" />
+                </TouchableOpacity>
 
-            <TextInput
-              placeholder="Enter Title"
-              placeholderTextColor="rgba(253, 230, 177, 0.5)"
-              value={title}
-              onChangeText={setTitle}
-              className="text-[#FDE6B1] text-3xl font-[900] tracking-wider uppercase flex-1"
-              style={{
-                textShadowColor: "rgba(0, 0, 0, 0.4)",
-                textShadowOffset: { width: 2, height: 2 },
-                textShadowRadius: 4,
-              }}
-            />
-          </View>
-
-          {/* Conditional Header: Dots for existing notes, Save for new ones */}
-          {params.mode === "edit" ? (
-            <View className="flex-row items-center">
-              <TouchableOpacity onPress={handleSave} className="mr-4">
-                {loading ? (
-                  <ActivityIndicator color="#7ED992" />
-                ) : (
-                  <Ionicons name="checkmark-done" size={30} color="#7ED992" />
-                )}
-              </TouchableOpacity>
-
-              <TouchableOpacity onPress={() => setShowMenu(!showMenu)}>
-                <Ionicons
-                  name="ellipsis-horizontal"
-                  size={30}
-                  color="#FDE6B1"
+                <TextInput
+                  placeholder="ENTER TITLE"
+                  placeholderTextColor="rgba(253, 230, 177, 0.5)"
+                  value={title}
+                  onChangeText={setTitle}
+                  editable={isEditing}
+                  style={styles.titleInput}
                 />
-              </TouchableOpacity>
+              </View>
+
+              <View style={styles.headerRight}>
+                {isEditing ? (
+                  <View style={styles.buttonContainer}>
+                    {loading ? (
+                      <ActivityIndicator size="small" color="#80CF8F" />
+                    ) : (
+                      <GreenButton
+                        title={params.mode === "edit" ? "UPDATE" : "SAVE"}
+                        onPress={handleSaveOrUpdate}
+                        fontSize={12}
+                        borderRadius={20}
+                        // Center-middle is now handled internally by GreenButton
+                      />
+                    )}
+                  </View>
+                ) : (
+                  <View style={{ zIndex: 50 }}>
+                    <TouchableOpacity onPress={() => setShowMenu(!showMenu)}>
+                      <Ionicons
+                        name="ellipsis-horizontal"
+                        size={30}
+                        color="#FDE6B1"
+                      />
+                    </TouchableOpacity>
+
+                    {showMenu && (
+                      <EditDeletePopUp
+                        onEdit={() => {
+                          setIsEditing(true);
+                          setShowMenu(false);
+                        }}
+                        onDelete={() => {
+                          setShowMenu(false);
+                          setShowDeleteModal(true);
+                        }}
+                      />
+                    )}
+                  </View>
+                )}
+              </View>
             </View>
-          ) : (
-            <TouchableOpacity
-              className="bg-[#7ED992] px-5 py-1.5 rounded-2xl shadow-md"
-              onPress={handleSave}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator size="small" color="#1D1D1D" />
-              ) : (
-                <Text className="text-[#1D1D1D] font-black">Save</Text>
-              )}
-            </TouchableOpacity>
-          )}
-        </View>
 
-        {/* Dropdown Menu */}
-        {showMenu && (
-          <EditDeletePopUp
-            onEdit={() => setShowMenu(false)}
-            onDelete={() => {
-              setShowMenu(false);
-              setShowDeleteModal(true);
-            }}
-          />
-        )}
+            {/* Note Input Area */}
+            <View style={styles.noteArea}>
+              <TextInput
+                multiline
+                placeholder="Enter notes......."
+                textAlignVertical="top"
+                value={content}
+                onChangeText={setContent}
+                editable={isEditing}
+                style={styles.contentInput}
+              />
+            </View>
 
-        {/* Delete Modal */}
-        <Modal transparent visible={showDeleteModal} animationType="fade">
-          <Pressable className="flex-1 bg-black/60 justify-center items-center px-10">
-            <View className="bg-[#6B728E] w-full rounded-[30px] p-6 shadow-2xl">
-              <Text className="text-center text-white text-2xl font-black mb-2">
-                Delete Note
-              </Text>
-              <Text className="text-center text-gray-200 text-sm mb-4">
-                Are you sure you want to delete this note?
-              </Text>
-
-              <View className="bg-[#3D435C] rounded-xl p-3 flex-row items-start mb-6">
-                <Ionicons name="warning-outline" size={20} color="#FDE6B1" />
-                <View className="ml-2 flex-1">
-                  <Text className="text-[#FDE6B1] font-bold text-xs uppercase">
-                    Warning!
+            {/* DELETE MODAL */}
+            <Modal transparent visible={showDeleteModal} animationType="fade">
+              <Pressable
+                style={styles.modalOverlay}
+                onPress={() => setShowDeleteModal(false)}
+              >
+                <View style={styles.modalContent}>
+                  <Text style={styles.modalTitle}>Delete Note</Text>
+                  <Text style={styles.modalSubText}>
+                    Are you sure you want to delete this note?
                   </Text>
-                  <Text className="text-gray-300 text-[10px]">
-                    Once deleted, you will no longer be able to retrieve this
-                    note.
-                  </Text>
+
+                  <View style={styles.warningBox}>
+                    <Ionicons
+                      name="warning-outline"
+                      size={20}
+                      color="#FDE6B1"
+                    />
+                    <View style={{ marginLeft: 10, flex: 1 }}>
+                      <Text style={styles.warningTitle}>Warning!</Text>
+                      <Text style={styles.warningText}>
+                        Once deleted, you will no longer be able to retrieve
+                        this note.
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.modalButtons}>
+                    <TouchableOpacity
+                      onPress={handleDelete}
+                      style={styles.deleteBtn}
+                    >
+                      <Text style={styles.btnText}>Delete</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => setShowDeleteModal(false)}
+                      style={styles.cancelBtn}
+                    >
+                      <Text style={[styles.btnText, { color: "#3D435C" }]}>
+                        Cancel
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
-              </View>
-
-              <View className="flex-row justify-center gap-4">
-                <TouchableOpacity
-                  onPress={handleDelete}
-                  className="bg-[#FF5A5F] px-8 py-2 rounded-full"
-                >
-                  <Text className="text-white font-black">Delete</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => setShowDeleteModal(false)}
-                  className="bg-white px-8 py-2 rounded-full"
-                >
-                  <Text className="text-[#3D435C] font-black">Cancel</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </Pressable>
-        </Modal>
-
-        {/* Paper Note Area */}
-        <View className="flex-1 mx-5 mb-10 bg-[#FFF9E3] rounded-[40px] shadow-2xl p-6">
-          <TextInput
-            multiline
-            placeholder="Enter notes......."
-            textAlignVertical="top"
-            value={content}
-            onChangeText={setContent}
-            className="flex-1 text-[#502707] text-[18px] font-medium leading-7"
-          />
-        </View>
-      </View>
+              </Pressable>
+            </Modal>
+          </View>
+        </TouchableWithoutFeedback>
+      </KeyboardAvoidingView>
     </ImageBackground>
   );
 }
+
+const styles = StyleSheet.create({
+  background: { flex: 1 },
+  container: { flex: 1 },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    marginTop: 50,
+    marginBottom: 20,
+  },
+  headerLeft: { flexDirection: "row", alignItems: "center", flex: 1 },
+  headerRight: {
+    minWidth: 80,
+    height: 40, // Height to align with the text input
+    justifyContent: "center",
+    alignItems: "flex-end",
+  },
+  buttonContainer: {
+    width: 76, // Match the exact width of your GreenButton
+    height: 33, // Match the exact height of your GreenButton
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  backButton: { marginRight: 8 },
+  titleInput: {
+    color: "#FDE6B1",
+    fontSize: 24,
+    fontWeight: "900",
+    flex: 1,
+    textTransform: "uppercase",
+  },
+  noteArea: {
+    flex: 1,
+    marginHorizontal: 20,
+    marginBottom: 40,
+    backgroundColor: "#FFF9E3",
+    borderRadius: 40,
+    padding: 24,
+  },
+  contentInput: { flex: 1, color: "#502707", fontSize: 18, lineHeight: 28 },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 40,
+  },
+  modalContent: {
+    backgroundColor: "#6B728E",
+    width: "100%",
+    borderRadius: 30,
+    padding: 24,
+  },
+  modalTitle: {
+    textAlign: "center",
+    color: "white",
+    fontSize: 24,
+    fontWeight: "900",
+    marginBottom: 8,
+  },
+  modalSubText: {
+    textAlign: "center",
+    color: "#D1D5DB",
+    fontSize: 14,
+    marginBottom: 16,
+  },
+  warningBox: {
+    backgroundColor: "#3D435C",
+    borderRadius: 12,
+    padding: 12,
+    flexDirection: "row",
+    marginBottom: 24,
+  },
+  warningTitle: { color: "#FDE6B1", fontWeight: "bold", fontSize: 12 },
+  warningText: { color: "#D1D5DB", fontSize: 10 },
+  modalButtons: { flexDirection: "row", justifyContent: "center", gap: 15 },
+  deleteBtn: {
+    backgroundColor: "#FF5A5F",
+    paddingHorizontal: 30,
+    paddingVertical: 10,
+    borderRadius: 25,
+  },
+  cancelBtn: {
+    backgroundColor: "white",
+    paddingHorizontal: 30,
+    paddingVertical: 10,
+    borderRadius: 25,
+  },
+  btnText: { color: "white", fontWeight: "900" },
+});
