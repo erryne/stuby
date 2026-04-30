@@ -5,24 +5,24 @@ import { useRouter } from "expo-router";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import React, { useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Dimensions,
-    ImageBackground,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+  ImageBackground,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { db } from "../firebaseConfig";
 
 // Initialize EmailJS
 emailjs.init({ publicKey: "bYzbLSbuDg4fOHWFK" });
 
-const { height } = Dimensions.get("window");
+const { width } = Dimensions.get("window");
 
 export default function Register() {
   const [firstName, setFirstName] = useState("");
@@ -109,23 +109,27 @@ export default function Register() {
       resizeMode="cover"
       style={styles.background}
     >
+      {/* KeyboardAvoidingView prevents the keyboard from hiding the inputs */}
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={{ flex: 1, width: "100%" }}
       >
+        {/* Title Section is OUTSIDE ScrollView — stays fixed when keyboard opens */}
+        <View style={styles.titleContainer}>
+          <Text style={styles.registerText}>REGISTER</Text>
+          <Text style={styles.subtitleText}>
+            Time to get inky — it's time to study!
+          </Text>
+        </View>
+
+        {/* Only the form scrolls when keyboard is open */}
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
+          bounces={false}
+          keyboardShouldPersistTaps="handled"
         >
           <View style={styles.innerContainer}>
-            {/* Title Section */}
-            <View style={styles.titleContainer}>
-              <Text style={styles.registerText}>REGISTER</Text>
-              <Text style={styles.subtitleText}>
-                Time to get inky — it’s time to study!
-              </Text>
-            </View>
-
             {/* Input Section */}
             <View className="gap-0">
               <CustomTextInput
@@ -183,11 +187,25 @@ export default function Register() {
                   onPress={handleGoToVerification}
                 />
               )}
-
-              <View className="flex-row justify-center mt-4">
-                <Text className="text-white">Already a buddy? </Text>
+              <View
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "center",
+                  marginTop: 16,
+                }}
+              >
                 <TouchableOpacity onPress={() => router.push("/login")}>
-                  <Text className="text-white font-bold">Sign In</Text>
+                  <Text style={{ color: "white", fontSize: 15 }}>
+                    Already a buddy?{" "}
+                    <Text
+                      style={{
+                        fontWeight: "bold",
+                        textDecorationLine: "underline",
+                      }}
+                    >
+                      Sign In
+                    </Text>
+                  </Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -204,33 +222,34 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    justifyContent: "center", // Centering vertically
-    alignItems: "center", // Centering horizontally
+    paddingBottom: 40,
   },
   innerContainer: {
     width: "100%",
     paddingHorizontal: "8%",
   },
+  // Title is fixed — outside ScrollView
   titleContainer: {
-    marginBottom: 40,
-    alignItems: "center",
+    paddingHorizontal: "8%",
+    paddingTop: "55%", // ✅ reduced so octopus shows at top
+    marginBottom: 32,
   },
   registerText: {
-    fontSize: 60,
+    fontSize: 65,
     fontWeight: "900",
     color: "#FFEF9A",
     textShadowColor: "#000000",
     textShadowOffset: { width: 4, height: 4 },
     textShadowRadius: 1,
     letterSpacing: 1,
-    textAlign: "center",
+    textAlign: "center", // ✅ matches Figma
   },
   subtitleText: {
     color: "#553A00",
-    fontSize: 17,
+    fontSize: 19,
     fontFamily: "Poppins-Bold",
     fontWeight: "700",
-    textAlign: "center",
+    textAlign: "center", // ✅ matches Figma
     textShadowColor: "rgba(0, 0, 0, 0.25)",
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 4,

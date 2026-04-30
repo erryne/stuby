@@ -4,16 +4,16 @@ import { Link, useRouter } from "expo-router";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import React, { useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Dimensions,
-    ImageBackground,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+  ImageBackground,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { auth } from "../firebaseConfig";
 
@@ -62,104 +62,113 @@ export default function Login() {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={{ flex: 1 }}
       >
-        <ScrollView
-          contentContainerStyle={{ flexGrow: 1 }}
-          bounces={false}
-          keyboardShouldPersistTaps="handled"
+        {/* Title is OUTSIDE ScrollView — stays fixed when keyboard opens */}
+        <View
+          style={{
+            paddingHorizontal: "8%",
+            paddingTop: "55%",
+            marginBottom: 32,
+          }}
         >
-          <View
+          {/* Header */}
+          <Text
             style={{
-              flex: 1,
-              paddingHorizontal: "8%",
-              justifyContent: "center", // Centers the content vertically
+              fontSize: width < 380 ? 54 : 68,
+              fontWeight: "900",
+              color: "#FFEF9A",
+              textShadowColor: "#000",
+              textShadowOffset: { width: 4, height: 4 },
+              textShadowRadius: 1,
+              letterSpacing: 1,
+              textAlign: "left",
             }}
           >
-            {/* Header */}
-            <View style={{ marginBottom: 40, marginTop: 60 }}>
-              <Text
-                style={{
-                  fontSize: width < 380 ? 54 : 68,
-                  fontWeight: "900",
-                  color: "#FFEF9A",
-                  textShadowColor: "#000",
-                  textShadowOffset: { width: 4, height: 4 },
-                  textShadowRadius: 1,
-                  letterSpacing: 1,
-                }}
-              >
-                LOGIN
-              </Text>
+            LOGIN
+          </Text>
 
-              <Text
-                style={{
-                  marginTop: 4,
-                  fontSize: 18,
-                  color: "#553A00",
-                  fontWeight: "700",
-                  textShadowColor: "rgba(0,0,0,0.25)",
-                  textShadowOffset: { width: 0, height: 2 },
-                  textShadowRadius: 4,
-                }}
-              >
-                Excited to see you again, buddy!
-              </Text>
-            </View>
+          <Text
+            style={{
+              marginTop: 4,
+              fontSize: 20,
+              color: "#553A00",
+              fontWeight: "700",
+              textAlign: "left",
+              textShadowColor: "rgba(0,0,0,0.25)",
+              textShadowOffset: { width: 0, height: 2 },
+              textShadowRadius: 4,
+            }}
+          >
+            Excited to see you again, buddy!
+          </Text>
+        </View>
 
-            {/* Form Section */}
-            <View className="items-center">
-              <CustomTextInput
-                placeholder="Email"
-                textContentType="username"
-                iconName="user"
-                value={email}
-                onChangeText={setEmail}
-                autoCapitalize="none"
-                keyboardType="email-address"
-                editable={!isLoading}
-              />
+        {/* Only the form scrolls when keyboard is open */}
+        <ScrollView
+          contentContainerStyle={{ paddingHorizontal: "8%", paddingBottom: 40 }}
+          bounces={false}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Form Section */}
+          <CustomTextInput
+            placeholder="Email"
+            textContentType="username"
+            iconName="user"
+            value={email}
+            onChangeText={setEmail}
+            autoCapitalize="none"
+            keyboardType="email-address"
+            editable={!isLoading}
+          />
 
-              <CustomTextInput
-                placeholder="Password"
-                secureTextEntry
-                iconName="lock"
-                value={password}
-                onChangeText={setPassword}
-                editable={!isLoading}
-              />
+          <CustomTextInput
+            placeholder="Password"
+            secureTextEntry
+            iconName="lock"
+            value={password}
+            onChangeText={setPassword}
+            editable={!isLoading}
+          />
 
-              <TouchableOpacity className="self-end mt-2 mb-8">
-                <Text className="text-white font-bold text-base">
-                  Forgot Password?
+          <TouchableOpacity
+            style={{ alignSelf: "flex-end", marginTop: 6, marginBottom: 24 }}
+          >
+            <Text style={{ color: "white", fontWeight: "bold", fontSize: 15 }}>
+              Forgot Password?
+            </Text>
+          </TouchableOpacity>
+
+          <View style={{ width: "100%" }}>
+            {isLoading ? (
+              <ActivityIndicator size="large" color="#FFEF9A" />
+            ) : (
+              <CustomButton title="Login" onPress={handleLogin} />
+            )}
+          </View>
+
+          {/* Footer */}
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "center",
+              marginTop: 16,
+            }}
+          >
+            <Link href="/register" asChild>
+              <TouchableOpacity>
+                <Text style={{ color: "white", fontSize: 15 }}>
+                  Not a buddy?{" "}
+                  <Text
+                    style={{
+                      fontWeight: "bold",
+                      textDecorationLine: "underline",
+                    }}
+                  >
+                    Register Here
+                  </Text>
                 </Text>
               </TouchableOpacity>
-
-              <View style={{ width: "100%" }}>
-                {isLoading ? (
-                  <ActivityIndicator size="large" color="#FFEF9A" />
-                ) : (
-                  <CustomButton title="Login" onPress={handleLogin} />
-                )}
-              </View>
-            </View>
-
-            {/* Footer */}
-            <View className="flex-row justify-center mt-10 mb-10">
-              <Link href="/register" asChild>
-                <TouchableOpacity>
-                  <Text style={{ color: "white", fontSize: 16 }}>
-                    Don't have an account?{" "}
-                    <Text
-                      style={{
-                        fontWeight: "bold",
-                        textDecorationLine: "underline",
-                      }}
-                    >
-                      Register
-                    </Text>
-                  </Text>
-                </TouchableOpacity>
-              </Link>
-            </View>
+            </Link>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>

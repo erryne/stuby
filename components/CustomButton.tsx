@@ -1,12 +1,17 @@
 import React from "react";
-import { Text, TextStyle, TouchableOpacity } from "react-native";
+import {
+  DimensionValue,
+  Text,
+  TextStyle,
+  TouchableOpacity,
+} from "react-native";
 
 interface CustomButtonProps {
   title: string;
   onPress: () => void;
   backgroundColor?: string; // Tailwind class
   textColor?: string; // Tailwind class
-  width?: number; // always in pixels
+  width?: DimensionValue; // ✅ fixed: allows both "100%" and pixel numbers
   height?: number; // always in pixels
   borderRadius?: number;
   fontSize?: number;
@@ -20,7 +25,7 @@ const CustomButton: React.FC<CustomButtonProps> = ({
   onPress,
   backgroundColor = "#FFEF9A",
   textColor = "text-black",
-  width = "100%", // number in pixels
+  width = "100%",
   height = 50,
   borderRadius = 16,
   fontSize = 18,
@@ -34,20 +39,24 @@ const CustomButton: React.FC<CustomButtonProps> = ({
     <TouchableOpacity
       onPress={onPress}
       activeOpacity={0.8}
-      className={`items-center justify-center border-2 border-black ${!isHex ? backgroundColor : ""} ${containerStyle || ""}`}
+      className={`${!isHex ? backgroundColor : ""} ${containerStyle || ""}`}
       style={{
+        width,
         height,
         borderRadius,
         backgroundColor: isHex ? backgroundColor : undefined,
+        alignItems: "center",
+        justifyContent: "center",
+        borderWidth: 2, // ✅ moved from Tailwind
+        borderColor: "black", // ✅ moved from Tailwind
       }}
     >
       <Text
-        className={`${textColor} ${textStyle}`}
+        className={`${textColor} ${textStyle ?? ""}`}
         style={{
           fontSize,
           fontWeight,
           textAlign: "center",
-          justifyContent: "center",
         }}
       >
         {title}
