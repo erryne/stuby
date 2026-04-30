@@ -10,13 +10,15 @@ import {
   Dimensions,
   Image,
   ImageBackground,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  TouchableWithoutFeedback,
+  View
 } from "react-native";
 
 // Firebase Imports
@@ -98,6 +100,9 @@ const UpdateFlashcardFolder = () => {
       resizeMode="cover"
       style={styles.backgroundImage}
     >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+
+     
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={styles.keyboardContainer}
@@ -156,6 +161,7 @@ const UpdateFlashcardFolder = () => {
           )}
         </View>
       </KeyboardAvoidingView>
+      </TouchableWithoutFeedback>
     </ImageBackground>
   );
 };
