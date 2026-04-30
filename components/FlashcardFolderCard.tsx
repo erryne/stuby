@@ -51,7 +51,6 @@ const FlashcardFolderCard: React.FC<FlashcardFolderProps> = ({
     }).start();
   };
 
-
   const containerStyle = [styles.folderContainer, !image && styles.defaultBg];
   const containerProps: any = {
     style: containerStyle,
@@ -77,21 +76,19 @@ const FlashcardFolderCard: React.FC<FlashcardFolderProps> = ({
             <>
               {image && <View style={styles.imageOverlay} />}
 
-              {/* TOP GREEN BAR */}
+              {/* TOP DARK BAR */}
               <View style={styles.topBar}>
-                {[0, 1, 2].map((i) => (
-                  <TouchableWithoutFeedback
-                    key={i}
-                    onPress={() =>
-                      setPopupVisibleFolder(isPopupVisible ? null : folderId)
-                    }
-                  >
-                    <View
-                      style={styles.dot}
-                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                    />
-                  </TouchableWithoutFeedback>
-                ))}
+                <TouchableWithoutFeedback
+                  onPress={() =>
+                    setPopupVisibleFolder(isPopupVisible ? null : folderId)
+                  }
+                >
+                  <View style={styles.dotContainer}>
+                    {[0, 1, 2].map((i) => (
+                      <View key={i} style={styles.dot} />
+                    ))}
+                  </View>
+                </TouchableWithoutFeedback>
               </View>
 
               {/* POPUP */}
@@ -110,8 +107,16 @@ const FlashcardFolderCard: React.FC<FlashcardFolderProps> = ({
                 </View>
               )}
 
-              {/* TITLE */}
-              <Text style={styles.titleText}>{text}</Text>
+              {/* TITLE - Centered below the bar */}
+              <View style={styles.titleWrapper}>
+                <Text 
+                   style={styles.titleText} 
+                   numberOfLines={2}
+                   adjustsFontSizeToFit
+                >
+                  {text}
+                </Text>
+              </View>
             </>
           )}
         </Animated.View>
@@ -121,15 +126,16 @@ const FlashcardFolderCard: React.FC<FlashcardFolderProps> = ({
 };
 
 export default FlashcardFolderCard;
-
 const styles = StyleSheet.create({
   cardWrapper: {
-    flex: 1,
+    height: SCREEN_WIDTH * 0.36, 
+    width: "100%",
+    marginBottom: SCREEN_WIDTH * 0.04, 
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 5,
     backgroundColor: "transparent",
   },
   flexFill: {
@@ -138,25 +144,22 @@ const styles = StyleSheet.create({
   folderContainer: {
     flex: 1,
     borderRadius: 16,
-    justifyContent: "center",
-    alignItems: "center", 
     overflow: "hidden",
-    padding: SCREEN_WIDTH * 0.03, 
-    marginBottom: 16,
   },
   defaultBg: {
     backgroundColor: "#FFF9E5",
   },
   imageOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(255, 255, 255, 0.3)",
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
   },
   topBar: {
     position: "absolute",
     top: 0,
     left: 0,
     right: 0,
-    height: "22%", 
+    // top green header
+    height: SCREEN_WIDTH * 0.08, 
     backgroundColor: "#39675F",
     zIndex: 10,
     flexDirection: "row",
@@ -164,25 +167,37 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 12,
   },
+  dotContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 5,
+  },
   dot: {
-    width: SCREEN_WIDTH * 0.02, // Responsive dot size
-    height: SCREEN_WIDTH * 0.02,
+    width: SCREEN_WIDTH * 0.015,
+    height: SCREEN_WIDTH * 0.015,
     borderRadius: SCREEN_WIDTH * 0.01,
     backgroundColor: "white",
-    marginHorizontal: 2,
+    marginHorizontal: 1.5,
   },
   popupContainer: {
     position: "absolute",
-    top: 8,
-    right: 8,
-    zIndex: 20,
+    top: SCREEN_WIDTH * 0.09, 
+    right: 10,
+    zIndex: 30,
+  },
+  titleWrapper: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    // under the topBar
+    paddingTop: SCREEN_WIDTH * 0.08, 
+    paddingHorizontal: 20,
   },
   titleText: {
     fontSize: SCREEN_WIDTH * 0.075,
     fontWeight: "bold",
     color: "#553A00",
-    marginTop: SCREEN_WIDTH * 0.03, 
-    paddingHorizontal: 8,
     textAlign: "center",
+    marginBottom: 10,
   },
 });

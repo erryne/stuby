@@ -16,7 +16,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  View
+  View,
 } from "react-native";
 
 import AddFloatingButton from "@/components/AddFloatingButton";
@@ -25,7 +25,7 @@ import FlashcardFolderCard from "@/components/FlashcardFolderCard";
 import TitleHeader from "../../components/TitleHeader";
 import { auth, db } from "../../firebaseConfig";
 
-const { width } = Dimensions.get("window");
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 interface FlashcardFolder {
   id: string;
@@ -34,27 +34,20 @@ interface FlashcardFolder {
 }
 
 export default function FlashcardFolderScreen() {
-  const [flashcardFolders, setFlashcardFolders] = useState<FlashcardFolder[]>(
-    [],
-  );
+  const [flashcardFolders, setFlashcardFolders] = useState<FlashcardFolder[]>([]);
   const [loading, setLoading] = useState(true);
-
-  const [popupVisibleFolderId, setPopupVisibleFolderId] = useState<
-    string | null
-  >(null);
+  const [popupVisibleFolderId, setPopupVisibleFolderId] = useState<string | null>(null);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [folderToDelete, setFolderToDelete] = useState<string | null>(null);
 
-  // 1. REAL-TIME DATABASE LISTENER
   useEffect(() => {
     const user = auth.currentUser;
     if (!user) return;
 
-    // Listen to the "flashcardFolders" collection for this specific user
     const q = query(
       collection(db, "flashcardFolders"),
       where("userId", "==", user.uid),
-      orderBy("createdAt", "desc"),
+      orderBy("createdAt", "desc")
     );
 
     const unsubscribe = onSnapshot(
@@ -72,7 +65,7 @@ export default function FlashcardFolderScreen() {
       (error) => {
         console.error("Firestore Subscription Error:", error);
         setLoading(false);
-      },
+      }
     );
 
     return () => unsubscribe();
@@ -91,7 +84,6 @@ export default function FlashcardFolderScreen() {
     setPopupVisibleFolderId(null);
   };
 
-  // 2. DELETE FROM DATABASE
   const handleDeleteFolder = async () => {
     if (!folderToDelete) return;
     try {
@@ -115,11 +107,6 @@ export default function FlashcardFolderScreen() {
     setPopupVisibleFolderId(null);
   };
 
-
-
-
-
-
   return (
     <View style={styles.container}>
       <ImageBackground
@@ -127,63 +114,53 @@ export default function FlashcardFolderScreen() {
         style={styles.background}
         resizeMode="cover"
       >
-      
-      <View style={styles.contentContainer}>
+        <View style={styles.contentContainer}>
+          <TitleHeader image={require("../../assets/images/flashcardTitle.png")} />
 
-      <TitleHeader image={require("../../assets/images/flashcardTitle.png")} />
-
-      {loading ? (
-        <View className="flex-1 justify-center">
-          <ActivityIndicator size="large" color="#FDE6B1" />
-        </View>
-      ) : (
-        <ScrollView
-          className="overflow-hidden rounded-2xl shadow-md mb-4"
-          style={[styles.folderCard, { width: width * 0.9 }]}
-          showsVerticalScrollIndicator={false}
-        >
-          {flashcardFolders.map((folder) => (
-            <View
-              key={folder.id}
-              className="overflow-hidden rounded-2xl shadow-md mb-4"
-              style={{ width: width * 0.9, height: 180 }}
-            >
-              <FlashcardFolderCard
-                folderId={folder.id}
-                text={folder.text}
-                image={folder.image}
-                isPopupVisible={popupVisibleFolderId === folder.id}
-                setPopupVisibleFolder={setPopupVisibleFolderId}
-                onFolderEdit={handleEditFolder}
-                onFolderDelete={() => confirmDeleteFolder(folder.id)}
-                onFolderPress={handleFolderPress}
-              />
+          {loading ? (
+            <View style={styles.loaderContainer}>
+              <ActivityIndicator size="large" color="#FDE6B1" />
             </View>
-          ))}
-          {flashcardFolders.length === 0 && (
-            <Text className="text-white opacity-60 mt-10">
-              No folders yet. Tap + to create one!
-            </Text>
+          ) : (
+            <ScrollView
+              style={styles.scrollView}
+              contentContainerStyle={styles.scrollContent}
+              showsVerticalScrollIndicator={false}
+            >
+              {flashcardFolders.map((folder) => (
+                <FlashcardFolderCard
+                  key={folder.id}
+                  folderId={folder.id}
+                  text={folder.text}
+                  image={folder.image}
+                  isPopupVisible={popupVisibleFolderId === folder.id}
+                  setPopupVisibleFolder={setPopupVisibleFolderId}
+                  onFolderEdit={handleEditFolder}
+                  onFolderDelete={() => confirmDeleteFolder(folder.id)}
+                  onFolderPress={handleFolderPress}
+                />
+              ))}
+
+              {flashcardFolders.length === 0 && (
+                <Text style={styles.emptyText}>
+                  No folders yet. Tap + to create one!
+                </Text>
+              )}
+            </ScrollView>
           )}
-        </ScrollView>
-      )}
 
-      <AddFloatingButton
-        onPress={() => router.push("/flashcard/createFlashcardFolder")}
-      />
+          <AddFloatingButton
+            onPress={() => router.push("/flashcard/createFlashcardFolder")}
+          />
 
-      <DeleteFlashcardFolderModal
-        visible={deleteModalVisible}
-        onCancel={() => setDeleteModalVisible(false)}
-        onConfirm={handleDeleteFolder}
-      />
-
-      </View>
-
+          <DeleteFlashcardFolderModal
+            visible={deleteModalVisible}
+            onCancel={() => setDeleteModalVisible(false)}
+            onConfirm={handleDeleteFolder}
+          />
+        </View>
       </ImageBackground>
     </View>
-        
-
   );
 }
 
@@ -193,18 +170,30 @@ const styles = StyleSheet.create({
   },
   background: {
     flex: 1,
-    width: '100%',
-    height: '100%',
   },
   contentContainer: {
-    flex: 1, 
-    paddingHorizontal: "6%",
-    marginTop: "5%", 
+    flex: 1,
+    paddingHorizontal: "5%",
+    marginTop: "5%",
     alignItems: "center",
   },
-  folderCard: {
-    
-    width: width * 0.9,
+  loaderContainer: {
+    flex: 1,
+    justifyContent: "center",
+  },
+  scrollView: {
+    flex: 1,
+    width: "100%",
     marginTop: 10,
+  },
+  scrollContent: {
+    paddingBottom: 100, // Space for the floating button
+    alignItems: "center",
+  },
+  emptyText: {
+    color: "white",
+    opacity: 0.6,
+    marginTop: 40,
+    textAlign: "center",
   },
 });

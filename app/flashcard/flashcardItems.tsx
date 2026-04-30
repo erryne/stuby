@@ -8,10 +8,12 @@ import {
   Alert,
   Dimensions,
   ImageBackground,
+  Platform,
   ScrollView,
+  StyleSheet,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 
 // Firebase Imports
@@ -26,7 +28,7 @@ import {
 } from "firebase/firestore";
 import { db } from "../../firebaseConfig";
 
-const { width } = Dimensions.get("window");
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 interface Flashcard {
   id: string;
@@ -35,16 +37,14 @@ interface Flashcard {
 }
 
 const FlashcardItems = () => {
-  const { folderId } = useLocalSearchParams(); // Get the ID of the deck we clicked
+  const { folderId } = useLocalSearchParams();
   const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [folderName, setFolderName] = useState("Loading...");
   const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
 
-  // 1. Fetch Folder Details (to get the title)
   useEffect(() => {
     if (!folderId) return;
-
     const fetchFolderName = async () => {
       const docRef = doc(db, "flashcardFolders", folderId as string);
       const docSnap = await getDoc(docRef);
@@ -52,20 +52,16 @@ const FlashcardItems = () => {
         setFolderName(docSnap.data().title);
       }
     };
-
     fetchFolderName();
   }, [folderId]);
 
-  // 2. Real-time Listener for Cards inside this Folder
   useEffect(() => {
     if (!folderId) return;
-
-    // We assume cards are stored in a sub-collection: flashcardFolders -> folderId -> cards
     const cardsRef = collection(
       db,
       "flashcardFolders",
       folderId as string,
-      "cards",
+      "cards"
     );
     const q = query(cardsRef, orderBy("createdAt", "asc"));
 
@@ -100,7 +96,7 @@ const FlashcardItems = () => {
         "flashcardFolders",
         folderId as string,
         "cards",
-        cardId,
+        cardId
       );
       await deleteDoc(cardRef);
     } catch (error) {
@@ -116,27 +112,32 @@ const FlashcardItems = () => {
   };
 
   return (
-    <ImageBackground
-      source={require("../../assets/images/flashcardBg.png")}
-      className="flex-1"
-      resizeMode="cover"
-    >
+    <View style={styles.container}>
+      <ImageBackground
+        source={require("../../assets/images/flashcardBg.png")}
+        style={styles.background}
+        resizeMode="cover"
+      >
+      
+
       {/* HEADER */}
-      <View className="flex-row items-center justify-between px-6 mt-12 mb-6">
-        <TouchableOpacity onPress={() => router.back()}>
+      <View style={styles.header}>
+        {/* Left Icon: Slot 1 */}
+        <TouchableOpacity style={styles.headerSlot} onPress={() => router.back()}>
           <ChevronLeft size={28} color="#ffffff" />
         </TouchableOpacity>
 
-        <Text
-          numberOfLines={1}
-          className="text-3xl font-bold text-[#FDE6B1] text-center flex-1 px-2"
-        >
-          {folderName}
-        </Text>
+        {/* Title: Slot 2 (Takes up double the space) */}
+        <View style={styles.titleSlot}>
+          <Text numberOfLines={1} style={styles.headerTitle}>
+            {folderName}
+          </Text>
+        </View>
 
-        <TouchableOpacity onPress={() => setEditing(!editing)}>
+        {/* Right Icon: Slot 1 */}
+        <TouchableOpacity style={styles.headerSlot} onPress={() => setEditing(!editing)}>
           {editing ? (
-            <View className="bg-[#06402B] p-1 rounded-full">
+            <View style={styles.checkIconWrapper}>
               <Check size={24} color="white" />
             </View>
           ) : (
@@ -146,9 +147,9 @@ const FlashcardItems = () => {
       </View>
 
       {/* PLAY BUTTON */}
-      <View className="flex-row justify-end px-6 mb-4">
+      <View style={styles.playButtonRow}>
         <TouchableOpacity onPress={handlePlayFlashcard} disabled={loading}>
-          <View className="bg-[#FFF9E5] rounded-full p-3 shadow-md">
+          <View style={styles.playButton}>
             <Play size={30} fill="#000" color="#000" />
           </View>
         </TouchableOpacity>
@@ -156,13 +157,10 @@ const FlashcardItems = () => {
 
       {/* FLASHCARDS LIST */}
       {loading ? (
-        <ActivityIndicator size="large" color="#FDE6B1" className="mt-10" />
+        <ActivityIndicator size="large" color="#FDE6B1" style={styles.loader} />
       ) : (
         <ScrollView
-          contentContainerStyle={{
-            alignItems: "center",
-            paddingBottom: 100,
-          }}
+          contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
           {flashcards.map((card, index) => (
@@ -183,22 +181,101 @@ const FlashcardItems = () => {
           ))}
 
           {flashcards.length === 0 && !loading && (
-            <Text className="text-white/60 mt-10 text-lg">Deck is empty</Text>
+            <Text style={styles.emptyText}>Deck is empty</Text>
           )}
         </ScrollView>
       )}
 
-      {/* FLOATING BUTTON */}
       <AddFloatingButton
         onPress={() =>
           router.push({
             pathname: "/flashcard/createFlashcardItem",
-            params: { folderId }, // Pass folderId so the create screen knows where to save
+            params: { folderId },
           })
         }
       />
-    </ImageBackground>
+
+      </ImageBackground>
+    </View>
+        
   );
 };
 
 export default FlashcardItems;
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  background: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+  },
+ header: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: "7%", 
+    marginBottom: 24,
+    width: '100%',
+    paddingHorizontal: 16, // Add some padding here to push icons from edges
+  },
+  headerSlot: {
+    flex: 1, // Icon slots
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  titleSlot: {
+    flex: 3, // Changed from 2 to 3 to give text more breathing room
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitle: {
+    fontSize: SCREEN_WIDTH * 0.08, 
+    fontWeight: "900",
+    color: "#FFF9E5", 
+    textAlign: "center",
+    textTransform: "uppercase",
+    letterSpacing: -1,
+    paddingVertical: 5, 
+    textShadowColor: "#39675F",
+    textShadowOffset: { width: 0, height: 3 },
+    textShadowRadius: 1,
+    
+    fontFamily: Platform.OS === 'ios' ? 'Arial Rounded MT Bold' : 'sans-serif-condensed',
+  },
+  checkIconWrapper: {
+    backgroundColor: "#06402B",
+    padding: 4,
+    borderRadius: 999,
+    alignItems: 'flex-start'
+  },
+  playButtonRow: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    paddingHorizontal: 24,
+    marginBottom: 16,
+  },
+  playButton: {
+    backgroundColor: "#FFF9E5",
+    borderRadius: 999,
+    padding: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  loader: {
+    marginTop: 40,
+  },
+  scrollContent: {
+    alignItems: "center",
+    paddingBottom: 80,
+  },
+  emptyText: {
+    color: "rgba(255, 255, 255, 0.6)",
+    marginTop: 40,
+    fontSize: 18,
+  },
+});
