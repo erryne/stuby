@@ -10,22 +10,25 @@ import {
   Dimensions,
   Image,
   ImageBackground,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  TouchableWithoutFeedback,
+  View
 } from "react-native";
 
 // Firebase Imports
+import TitleHeader from "@/components/TitleHeader";
 import { doc, updateDoc } from "firebase/firestore";
 import { db } from "../../firebaseConfig";
 
 const { width, height } = Dimensions.get("window");
 
 const UpdateFlashcardFolder = () => {
-  // Retrieve params from the URL
   const {
     id,
     title: initialTitle,
@@ -40,20 +43,15 @@ const UpdateFlashcardFolder = () => {
   const [coverPhoto, setCoverPhoto] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Initialize state with existing data
   useEffect(() => {
     if (initialTitle) setTitle(initialTitle);
     if (initialPhoto) setCoverPhoto(initialPhoto);
   }, [id]);
 
-  // 🎨 PICK IMAGE
   const pickImage = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert(
-        "Permission Required",
-        "Permission required to access photos.",
-      );
+      Alert.alert("Permission Required", "Permission required to access photos.");
       return;
     }
 
@@ -69,32 +67,24 @@ const UpdateFlashcardFolder = () => {
     }
   };
 
-  // ✅ UPDATE DATABASE
   const handleUpdate = async () => {
     if (!id) {
       Alert.alert("Error", "Flashcard deck ID not found.");
       return;
     }
-
     if (!title.trim()) {
       Alert.alert("Validation", "Please enter a flashcard title.");
       return;
     }
 
     setLoading(true);
-
     try {
-      // Reference to the specific document in Firestore
       const docRef = doc(db, "flashcardFolders", id);
-
-      // Perform the update
       await updateDoc(docRef, {
         title: title.trim(),
         coverPhoto: coverPhoto ?? "",
-        updatedAt: new Date().toISOString(), // Optional: track modification time
+        updatedAt: new Date().toISOString(),
       });
-
-      // Go back to the previous screen (it will auto-update via onSnapshot)
       router.back();
     } catch (error) {
       console.error("Update Error:", error);
@@ -108,24 +98,21 @@ const UpdateFlashcardFolder = () => {
     <ImageBackground
       source={require("../../assets/images/flashcardBg.png")}
       resizeMode="cover"
-      className="flex-1"
+      style={styles.backgroundImage}
     >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+
+     
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
-        className="flex-1"
-        style={{ paddingHorizontal: width * 0.06 }}
+        style={styles.keyboardContainer}
       >
         {/* HEADER */}
-        <View className="flex-row items-center mt-12 justify-center mb-12 relative">
-          <TouchableOpacity
-            onPress={() => router.back()}
-            className="absolute left-0 p-2"
-          >
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
             <ChevronLeft size={28} color="#ffffff" />
           </TouchableOpacity>
-          <Text className="text-2xl font-bold text-[#FDE6B1]">
-            Update Flashcard Deck
-          </Text>
+          <TitleHeader image={require("../../assets/images/flashcardUpdateDeck.png")} />
         </View>
 
         {/* COVER PHOTO */}
@@ -133,67 +120,40 @@ const UpdateFlashcardFolder = () => {
           activeOpacity={0.85}
           onPress={pickImage}
           disabled={loading}
-          style={{
-            height: height * 0.24,
-            marginBottom: height * 0.04,
-          }}
-          className="w-full rounded-2xl bg-gray-800/40 overflow-hidden items-center justify-center border-2 border-dashed border-gray-400"
+          style={styles.coverPhotoContainer}
         >
           {coverPhoto ? (
-            <Image
-              source={{ uri: coverPhoto }}
-              resizeMode="cover"
-              className="w-full h-full"
-            />
+            <Image source={{ uri: coverPhoto }} resizeMode="cover" style={styles.coverPhoto} />
           ) : (
             <>
-              <View className="w-12 h-12 rounded-full bg-gray-300 items-center justify-center">
+              <View style={styles.plusIconCircle}>
                 <Feather name="plus" size={24} color="#555" />
               </View>
-              <Text className="mt-3 font-semibold text-white">
-                Add Cover Photo
-              </Text>
+              <Text style={styles.addPhotoText}>Add Cover Photo</Text>
             </>
           )}
         </TouchableOpacity>
 
         {/* TITLE LABEL */}
-        <Text
-          style={{ marginBottom: height * 0.01 }}
-          className="text-base font-semibold text-white"
-        >
-          Flashcard Deck Title
-        </Text>
+        <Text style={styles.label}>Flashcard Deck Title</Text>
 
         {/* INPUT */}
-        <View
-          style={{
-            height: height * 0.06,
-            shadowColor: "#000",
-            shadowOffset: { width: 0, height: 5 },
-            shadowOpacity: 0.3,
-            shadowRadius: 10,
-          }}
-          className="bg-white rounded-full border-2 border-black px-4 justify-center"
-        >
+        <View style={styles.inputWrapper}>
           <TextInput
             value={title}
             onChangeText={setTitle}
             editable={!loading}
-            className="font-bold text-black text-lg"
+            style={styles.textInput}
           />
         </View>
 
         {/* UPDATE BUTTON / LOADING */}
-        <View
-          style={{ marginTop: height * 0.03 }}
-          className="flex-row justify-end"
-        >
+        <View style={styles.footer}>
           {loading ? (
             <ActivityIndicator color="#FDE6B1" size="large" />
           ) : (
             <GreenButton
-              title="Update"
+              title="Save"
               onPress={handleUpdate}
               widthPercent={0.3}
               heightPercent={0.06}
@@ -201,8 +161,92 @@ const UpdateFlashcardFolder = () => {
           )}
         </View>
       </KeyboardAvoidingView>
+      </TouchableWithoutFeedback>
     </ImageBackground>
   );
 };
 
 export default UpdateFlashcardFolder;
+
+const styles = StyleSheet.create({
+  backgroundImage: {
+    flex: 1,
+  },
+  keyboardContainer: {
+    flex: 1,
+    paddingHorizontal: width * 0.06,
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: "5%", 
+    marginBottom: 40,
+    position: "relative",
+  },
+  backButton: {
+    position: "absolute",
+    left: 0,
+    padding: 8,
+  },
+  coverPhotoContainer: {
+    width: "100%",
+    height: height * 0.24,
+    marginBottom: height * 0.04,
+    borderRadius: 16,
+    backgroundColor: "rgba(31, 41, 55, 0.4)",
+    overflow: "hidden",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderStyle: "dashed",
+    borderColor: "#9ca3af",
+  },
+  coverPhoto: {
+    width: "100%",
+    height: "100%",
+  },
+  plusIconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#d1d5db",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  addPhotoText: {
+    marginTop: 12,
+    fontWeight: "600",
+    color: "white",
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "white",
+    marginBottom: height * 0.01,
+  },
+  inputWrapper: {
+    height: height * 0.06,
+    backgroundColor: "white",
+    borderRadius: 999,
+    borderWidth: 2,
+    borderColor: "black",
+    paddingHorizontal: 16,
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  textInput: {
+    fontWeight: "bold",
+    color: "black",
+    fontSize: 18,
+  },
+  footer: {
+    marginTop: height * 0.03,
+    flexDirection: "row",
+    justifyContent: "flex-end",
+  },
+});

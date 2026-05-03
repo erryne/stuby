@@ -4,12 +4,13 @@ import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Animated,
+  Dimensions,
   ImageBackground,
   PanResponder,
+  StyleSheet,
   Text,
   TouchableOpacity,
-  useWindowDimensions,
-  View,
+  View
 } from "react-native";
 
 // Firebase Imports
@@ -23,7 +24,8 @@ interface FlashcardData {
 }
 
 export default function PlayFlashcard() {
-  const { height, width } = useWindowDimensions();
+const { width, height } = Dimensions.get("window");
+
   const { folderId } = useLocalSearchParams();
 
   const [cards, setCards] = useState<FlashcardData[]>([]);
@@ -37,6 +39,7 @@ export default function PlayFlashcard() {
   const pan = useRef(new Animated.ValueXY()).current;
   const flipAnim = useRef(new Animated.Value(0)).current;
 
+
   // --- DATABASE LOGIC ---
   useEffect(() => {
     const fetchCards = async () => {
@@ -47,7 +50,7 @@ export default function PlayFlashcard() {
           db,
           "flashcardFolders",
           folderId as string,
-          "cards",
+          "cards"
         );
         const q = query(cardsRef, orderBy("createdAt", "asc"));
         const querySnapshot = await getDocs(q);
@@ -58,7 +61,6 @@ export default function PlayFlashcard() {
           back: doc.data().answer,
         }));
 
-        // Always put the instruction card at the top
         const deckWithInstruction = [
           { id: "instruction", front: "instruction", back: "" },
           ...fetchedCards,
@@ -125,7 +127,7 @@ export default function PlayFlashcard() {
           }).start();
         }
       },
-    }),
+    })
   ).current;
 
   // --- PROGRESS CALCULATION ---
@@ -144,7 +146,7 @@ export default function PlayFlashcard() {
     return (
       <ImageBackground
         source={require("../../assets/images/flashcardBg.png")}
-        className="flex-1 justify-center items-center"
+        style={styles.loadingContainer}
       >
         <ActivityIndicator size="large" color="#FDE6B1" />
       </ImageBackground>
@@ -154,11 +156,11 @@ export default function PlayFlashcard() {
   return (
     <ImageBackground
       source={require("../../assets/images/flashcardBg.png")}
-      className="flex-1"
+      style={styles.container}
       resizeMode="cover"
     >
       {/* Header */}
-      <View className="flex-row items-center justify-between px-4 mt-12">
+      <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="chevron-back" size={28} color="#ffffff" />
         </TouchableOpacity>
@@ -169,7 +171,7 @@ export default function PlayFlashcard() {
             setFlipped(false);
             flipAnim.setValue(0);
           }}
-          className="flex-row items-center bg-[#FDE6B1] px-4 py-2 rounded-xl shadow-sm"
+          style={styles.restartButton}
         >
           <Ionicons
             name="reload"
@@ -177,12 +179,12 @@ export default function PlayFlashcard() {
             color="#502707"
             style={{ marginRight: 5 }}
           />
-          <Text className="text-[#502707] font-bold">Restart</Text>
+          <Text style={styles.restartText}>Restart</Text>
         </TouchableOpacity>
       </View>
 
       {/* Cards Stack */}
-      <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+      <View style={styles.stackContainer}>
         {cards.length > 0 ? (
           <View style={{ height: cardHeight, width: cardWidth }}>
             {/* Background stack effect */}
@@ -192,36 +194,37 @@ export default function PlayFlashcard() {
               .map((card, index) => (
                 <View
                   key={card.id}
-                  style={{
-                    position: "absolute",
-                    top: index * 5,
-                    left: index * 2,
-                    height: cardHeight,
-                    width: cardWidth,
-                    backgroundColor: "#FFF9EC",
-                    borderRadius: 20,
-                    opacity: 0.5,
-                    elevation: 1,
-                  }}
+                  style={[
+                    styles.cardShadow,
+                    {
+                      top: index * 5,
+                      left: index * 2,
+                      height: cardHeight,
+                      width: cardWidth,
+                    },
+                  ]}
                 />
               ))}
 
             {/* Active Swipeable Card */}
             <Animated.View
               {...panResponder.panHandlers}
-              style={{
-                transform: [
-                  ...pan.getTranslateTransform(),
-                  {
-                    rotate: pan.x.interpolate({
-                      inputRange: [-width, 0, width],
-                      outputRange: ["-15deg", "0deg", "15deg"],
-                    }),
-                  },
-                ],
-                height: cardHeight,
-                width: cardWidth,
-              }}
+              style={[
+                styles.animatedCard,
+                {
+                  transform: [
+                    ...pan.getTranslateTransform(),
+                    {
+                      rotate: pan.x.interpolate({
+                        inputRange: [-width, 0, width],
+                        outputRange: ["-15deg", "0deg", "15deg"],
+                      }),
+                    },
+                  ],
+                  height: cardHeight,
+                  width: cardWidth,
+                },
+              ]}
             >
               <TouchableOpacity
                 activeOpacity={1}
@@ -230,111 +233,246 @@ export default function PlayFlashcard() {
               >
                 {/* Front Side */}
                 <Animated.View
-                  style={{
-                    position: "absolute",
-                    backfaceVisibility: "hidden",
-                    backgroundColor: "#FFF9EC",
-                    height: cardHeight,
-                    width: cardWidth,
-                    borderRadius: 20,
-                    justifyContent: "center",
-                    alignItems: "center",
-                    padding: 20,
-                    transform: [{ rotateY: frontInterpolate }],
-                    elevation: 5,
-                    shadowOpacity: 0.3,
-                    shadowRadius: 10,
-                  }}
+                  style={[
+                    styles.cardSide,
+                    styles.frontCard,
+                    {
+                      height: cardHeight,
+                      width: cardWidth,
+                      transform: [{ rotateY: frontInterpolate }],
+                    },
+                  ]}
                 >
                   {cards[0].front === "instruction" ? (
-                    <View className="items-center">
+                    <View style={styles.centerItems}>
                       <Ionicons
                         name="hand-right-outline"
                         size={40}
                         color="#39675F"
                       />
-                      <Text className="text-center mt-4">
-                        <Text className="text-lg font-semibold text-[#A57C00]">
+                      <Text style={styles.instructionText}>
+                        <Text style={styles.instructionTitle}>
                           Instruction:{"\n"}
                         </Text>
-                        <Text className="text-base text-[#502707]">
+                        <Text style={styles.instructionBody}>
                           Tap to see answer.{"\n"}Swipe to skip/next.
                         </Text>
                       </Text>
-                      <Text className="text-xl font-black text-[#39675F] mt-10">
+                      <Text style={styles.swipeToStartText}>
                         Swipe to start!
                       </Text>
                     </View>
                   ) : (
                     <>
-                      <Text className="text-sm font-bold text-[#39675F] uppercase mb-4 tracking-widest">
-                        Question
-                      </Text>
-                      <Text className="text-2xl font-semibold text-center text-[#502707]">
-                        {cards[0].front}
-                      </Text>
+                      <Text style={styles.cardLabel}>Question</Text>
+                      <Text style={styles.cardMainText}>{cards[0].front}</Text>
                     </>
                   )}
                 </Animated.View>
 
                 {/* Back Side */}
                 <Animated.View
-                  style={{
-                    position: "absolute",
-                    backfaceVisibility: "hidden",
-                    backgroundColor: "#FDE6B1",
-                    height: cardHeight,
-                    width: cardWidth,
-                    borderRadius: 20,
-                    justifyContent: "center",
-                    alignItems: "center",
-                    padding: 20,
-                    transform: [{ rotateY: backInterpolate }],
-                    elevation: 5,
-                  }}
+                  style={[
+                    styles.cardSide,
+                    styles.backCard,
+                    {
+                      height: cardHeight,
+                      width: cardWidth,
+                      transform: [{ rotateY: backInterpolate }],
+                    },
+                  ]}
                 >
-                  <Text className="text-sm font-bold text-[#39675F] uppercase mb-4 tracking-widest">
-                    Answer
-                  </Text>
-                  <Text className="text-2xl font-bold text-center text-[#502707]">
-                    {cards[0].back}
-                  </Text>
+                  <Text style={styles.cardLabel}>Answer</Text>
+                  <Text style={styles.cardMainTextBold}>{cards[0].back}</Text>
                 </Animated.View>
               </TouchableOpacity>
             </Animated.View>
           </View>
         ) : (
-          <View className="items-center">
+          <View style={styles.centerItems}>
             <Ionicons name="checkmark-circle" size={80} color="#FDE6B1" />
-            <Text className="text-3xl font-bold text-[#FDE6B1] mt-4">
-              All Done!
-            </Text>
+            <Text style={styles.allDoneText}>All Done!</Text>
             <TouchableOpacity
               onPress={() => router.back()}
-              className="mt-6 bg-white/20 px-6 py-2 rounded-full border border-white"
+              style={styles.goBackButton}
             >
-              <Text className="text-white font-bold">Go Back</Text>
+              <Text style={styles.goBackText}>Go Back</Text>
             </TouchableOpacity>
           </View>
         )}
       </View>
 
       {/* Progress Footer */}
-      <View className="mb-12 px-10">
-        <View className="w-full h-2 bg-black/20 rounded-full mb-2">
+      <View style={styles.footer}>
+        <View style={styles.progressBarBackground}>
           <View
-            style={{
-              width: `${Math.min((progress / Math.max(realCardsCount, 1)) * 100, 100)}%`,
-              height: "100%",
-              backgroundColor: "#FDE6B1",
-              borderRadius: 5,
-            }}
+            style={[
+              styles.progressBarFill,
+              {
+                width: `${Math.min(
+                  (progress / Math.max(realCardsCount, 1)) * 100,
+                  100
+                )}%`,
+              },
+            ]}
           />
         </View>
-        <Text className="text-[#FDE6B1] text-center font-medium">
+        <Text style={styles.progressText}>
           {cardsLeft} {cardsLeft === 1 ? "card" : "cards"} left
         </Text>
       </View>
     </ImageBackground>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    marginTop: "7%", 
+  },
+  restartButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FDE6B1",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 12,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  restartText: {
+    color: "#502707",
+    fontWeight: "bold",
+    fontSize: 14,
+  },
+  stackContainer: {
+    flex: 1,
+    marginTop: "20%",
+    alignItems: "center",
+  },
+  cardShadow: {
+    position: "absolute",
+    backgroundColor: "#FFF9EC",
+    borderRadius: 20,
+    opacity: 0.5,
+    elevation: 1,
+  },
+  animatedCard: {
+    elevation: 5,
+  },
+  cardSide: {
+    position: "absolute",
+    backfaceVisibility: "hidden",
+    borderRadius: 20,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+    elevation: 5,
+    shadowColor: "#000",
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 5 },
+  },
+  frontCard: {
+    backgroundColor: "#FFF9EC",
+  },
+  backCard: {
+    backgroundColor: "#FDE6B1",
+  },
+  centerItems: {
+    alignItems: "center",
+  },
+  instructionText: {
+    textAlign: "center",
+    marginTop: 16,
+  },
+  instructionTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#A57C00",
+  },
+  instructionBody: {
+    fontSize: 16,
+    color: "#502707",
+  },
+  swipeToStartText: {
+    fontSize: 20,
+    fontWeight: "900",
+    color: "#39675F",
+    marginTop: "5%", 
+  },
+  cardLabel: {
+    fontSize: 14,
+    fontWeight: "bold",
+    color: "#39675F",
+    textTransform: "uppercase",
+    marginBottom: 16,
+    letterSpacing: 2,
+  },
+  cardMainText: {
+    fontSize: 24,
+    fontWeight: "600",
+    textAlign: "center",
+    color: "#502707",
+  },
+  cardMainTextBold: {
+    fontSize: 24,
+    fontWeight: "bold",
+    textAlign: "center",
+    color: "#502707",
+  },
+  allDoneText: {
+    fontSize: 30,
+    fontWeight: "bold",
+    color: "#FDE6B1",
+    marginTop: 16,
+  },
+  goBackButton: {
+    marginTop: 24,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    borderRadius: 99,
+    borderWidth: 1,
+    borderColor: "white",
+  },
+  goBackText: {
+    color: "white",
+    fontWeight: "bold",
+  },
+  footer: {
+    marginBottom: "15%",
+    paddingHorizontal: "10%",
+  },
+  progressBarBackground: {
+    width: "100%",
+    height: 8,
+    backgroundColor: "rgba(0, 0, 0, 0.2)",
+    borderRadius: 4,
+    marginBottom: 8,
+  },
+  progressBarFill: {
+    height: "100%",
+    backgroundColor: "#FDE6B1",
+    borderRadius: 5,
+  },
+  progressText: {
+    color: "#FDE6B1",
+    textAlign: "center",
+    fontWeight: "500",
+  },
+});
