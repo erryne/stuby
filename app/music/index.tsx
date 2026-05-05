@@ -10,6 +10,7 @@ import {
   LayoutAnimation,
   Platform,
   ScrollView,
+  StyleSheet,
   Text,
   TouchableOpacity,
   UIManager,
@@ -18,6 +19,7 @@ import {
 import DeletePlaylistModal from "../../components/DeletePlaylistModal";
 
 // Firebase Imports
+import TitleHeader from "@/components/TitleHeader";
 import {
   collection,
   deleteDoc,
@@ -29,9 +31,8 @@ import {
 } from "firebase/firestore";
 import { db } from "../../firebaseConfig";
 
-const { width } = Dimensions.get("window");
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
-// 1. Define the Interface to fix the "isHearted" red lines
 interface MusicFolder {
   id: string;
   musicFolderTitle: string;
@@ -43,179 +44,203 @@ interface MusicFolder {
 }
 
 export default function Music() {
-  // Android LayoutAnimation setup
-  if (
-    Platform.OS === "android" &&
-    UIManager.setLayoutAnimationEnabledExperimental
-  ) {
+  if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
     UIManager.setLayoutAnimationEnabledExperimental(true);
   }
 
   const [musicFolders, setMusicFolders] = useState<MusicFolder[]>([]);
   const [loading, setLoading] = useState(true);
-  const [popupVisibleFolderId, setPopupVisibleFolderId] = useState<
-    string | null
-  >(null);
+  const [popupVisibleFolderId, setPopupVisibleFolderId] = useState<string | null>(null);
   const [folderToDelete, setFolderToDelete] = useState<string | null>(null);
 
-  /* ---------------- 2. DATABASE LISTENER ---------------- */
   useEffect(() => {
-    const q = query(
-      collection(db, "musicFolders"),
-      orderBy("createdAt", "desc"),
-    );
+    const q = query(collection(db, "musicFolders"), orderBy("createdAt", "desc"));
 
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        const foldersData = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...(doc.data() as Omit<MusicFolder, "id">),
-        })) as MusicFolder[];
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const foldersData = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...(doc.data() as Omit<MusicFolder, "id">),
+      })) as MusicFolder[];
 
-        // Create "All Songs" folder if it doesn't exist in DB
-        // Or find it if you stored it in DB
-        let allSongs = foldersData.find((f) => f.id === "all");
+      let allSongs = foldersData.find((f) => f.id === "all");
+      if (!allSongs) {
+        allSongs = {
+          id: "all",
+          musicFolderTitle: "All Songs",
+          musicImage: undefined,
+          totalSongs: 0,
+          totalStreamingMinutes: "0 min",
+          isHearted: false,
+        };
+      }
 
-        if (!allSongs) {
-          allSongs = {
-            id: "all",
-            musicFolderTitle: "All Songs",
-            musicImage: undefined,
-            totalSongs: 0,
-            totalStreamingMinutes: "0 min",
-            isHearted: false,
-          };
-        }
+      const others = foldersData.filter((f) => f.id !== "all");
+      const hearted = others.filter((f) => f.isHearted);
+      const unhearted = others.filter((f) => !f.isHearted);
 
-        const others = foldersData.filter((f) => f.id !== "all");
-        const hearted = others.filter((f) => f.isHearted);
-        const unhearted = others.filter((f) => !f.isHearted);
-
-        // Smooth transition for hearting/sorting
-        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-        setMusicFolders([allSongs, ...hearted, ...unhearted]);
-        setLoading(false);
-      },
-      (error) => {
-        console.error("Firestore error:", error);
-        setLoading(false);
-      },
-    );
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      setMusicFolders([allSongs, ...hearted, ...unhearted]);
+      setLoading(false);
+    }, (error) => {
+      console.error("Firestore error:", error);
+      setLoading(false);
+    });
 
     return () => unsubscribe();
   }, []);
 
-  /* ---------------- 3. DELETE FUNCTION ---------------- */
   const handleDeleteFolder = async (id: string) => {
     if (id === "all") return;
     try {
       await deleteDoc(doc(db, "musicFolders", id));
       setFolderToDelete(null);
     } catch (error) {
-      console.error("Error deleting folder:", error);
       Alert.alert("Error", "Could not delete playlist.");
     }
   };
 
-  /* ---------------- 4. HEART TOGGLE FUNCTION ---------------- */
   const toggleHeartFolder = async (id: string, currentStatus: boolean) => {
     if (id === "all") return;
     try {
-      const folderRef = doc(db, "musicFolders", id);
-      await updateDoc(folderRef, {
-        isHearted: !currentStatus,
-      });
+      await updateDoc(doc(db, "musicFolders", id), { isHearted: !currentStatus });
     } catch (error) {
       console.error("Error toggling heart:", error);
     }
   };
 
-  if (loading) {
-    return (
+  return (
+    <View style={styles.container}>
       <ImageBackground
         source={require("../../assets/images/musicBg.png")}
-        className="flex-1 justify-center items-center"
+        style={styles.background}
+        resizeMode="cover"
       >
-        <ActivityIndicator size="large" color="#FDE6B1" />
-      </ImageBackground>
-    );
-  }
+        <View style={styles.contentContainer}>
+          <TitleHeader image={require("../../assets/images/musicHeader.png")} />
 
-  return (
-    <ImageBackground
-      source={require("../../assets/images/musicBg.png")}
-      className="flex-1"
-      resizeMode="cover"
-    >
-      {/* Header */}
-      <Text className="text-[#FDE6B1] mt-12 mb-8 text-4xl font-[900] text-center tracking-[4px]">
-        Music
-      </Text>
+          {loading ? (
+            <View style={styles.loaderContainer}>
+              <ActivityIndicator size="large" color="#FDE6B1" />
+            </View>
+          ) : (
+            <ScrollView 
+              style={styles.scrollView}
+              contentContainerStyle={styles.scrollContent} 
+              showsVerticalScrollIndicator={false}
+            >
+              {musicFolders.map((folder) => (
+                <View key={folder.id} style={styles.cardContainer}>
+                  <MusicFolderCard
+                    musicFolderId={folder.id}
+                    musicFolderTitle={folder.musicFolderTitle}
+                    musicImage={
+                      folder.musicImage
+                        ? { uri: folder.musicImage }
+                        : require("../../assets/images/musicDefault.png")
+                    }
+                    totalSongs={folder.totalSongs}
+                    totalStreamingMinutes={folder.totalStreamingMinutes}
+                    isPopupVisible={popupVisibleFolderId === folder.id}
+                    setPopupVisibleFolder={folder.id === "all" ? () => {} : setPopupVisibleFolderId}
+                    onFolderDelete={() => setFolderToDelete(folder.id)}
+                    onFolderPress={() =>
+                      router.push({
+                        pathname: "/music/playlist",
+                        params: { id: folder.id, title: folder.musicFolderTitle },
+                      })
+                    }
+                    isHearted={folder.isHearted}
+                    onHeartToggle={() => toggleHeartFolder(folder.id, folder.isHearted)}
+                    hideHeart={folder.id === "all"}
+                  />
+                </View>
+              ))}
 
-      {/* Main List */}
-      <ScrollView
-        contentContainerStyle={{ alignItems: "center", paddingBottom: 100 }}
-      >
-        {musicFolders.map((folder) => (
-          <View
-            key={folder.id}
-            className="overflow-hidden rounded-2xl shadow-md mb-4"
-            style={{ width: width * 0.9, height: 130 }}
+              {musicFolders.length === 1 && (
+                <Text style={styles.emptyText}>No playlists yet. Create one!</Text>
+              )}
+            </ScrollView>
+          )}
+
+          {/* Floating Add Button */}
+          <TouchableOpacity 
+            activeOpacity={0.8}
+            style={styles.floatingButton} 
+            onPress={() => router.push("/music/createMusicFolder")}
           >
-            <MusicFolderCard
-              musicFolderId={folder.id}
-              musicFolderTitle={folder.musicFolderTitle}
-              // Handle local vs remote image
-              musicImage={
-                folder.musicImage
-                  ? { uri: folder.musicImage }
-                  : require("../../assets/images/musicDefault.png")
-              }
-              totalSongs={folder.totalSongs}
-              totalStreamingMinutes={folder.totalStreamingMinutes}
-              isPopupVisible={popupVisibleFolderId === folder.id}
-              setPopupVisibleFolder={
-                folder.id === "all" ? () => {} : setPopupVisibleFolderId
-              }
-              onFolderDelete={() => setFolderToDelete(folder.id)}
-              onFolderPress={() =>
-                router.push({
-                  pathname: "/music/playlist",
-                  params: { id: folder.id, title: folder.musicFolderTitle },
-                })
-              }
-              isHearted={folder.isHearted}
-              onHeartToggle={() =>
-                toggleHeartFolder(folder.id, folder.isHearted)
-              }
-              hideHeart={folder.id === "all"}
-            />
-          </View>
-        ))}
+            <Ionicons name="add" size={40} color="#2E2A25" />
+          </TouchableOpacity>
 
-        {musicFolders.length === 1 && (
-          <Text className="text-white/50 mt-10">
-            No playlists yet. Create one!
-          </Text>
-        )}
-      </ScrollView>
-
-      {/* Floating Add Button */}
-      <TouchableOpacity
-        className="absolute bottom-8 right-8 w-[65px] h-[65px] bg-[#EFE2B6] rounded-full justify-center items-center shadow-2xl"
-        style={{ elevation: 5 }}
-        onPress={() => router.push("/music/createMusicFolder")}
-      >
-        <Ionicons name="add" size={40} color="#2E2A25" />
-      </TouchableOpacity>
-
-      {/* Modal Overlay */}
-      <DeletePlaylistModal
-        visible={!!folderToDelete}
-        onCancel={() => setFolderToDelete(null)}
-        onConfirm={() => folderToDelete && handleDeleteFolder(folderToDelete)}
-      />
-    </ImageBackground>
+          <DeletePlaylistModal
+            visible={!!folderToDelete}
+            onCancel={() => setFolderToDelete(null)}
+            onConfirm={() => folderToDelete && handleDeleteFolder(folderToDelete)}
+          />
+        </View>
+      </ImageBackground>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  background: {
+    flex: 1,
+  },
+  contentContainer: {
+    flex: 1,
+    paddingHorizontal: "5%",
+    marginTop: "5%",
+    alignItems: "center",
+  },
+  loaderContainer: {
+    flex: 1,
+    justifyContent: "center",
+  },
+  scrollView: {
+    flex: 1,
+    width: "100%",
+    marginTop: 10,
+  },
+  scrollContent: {
+    alignItems: "center",
+    paddingBottom: 100, // Space for floating button matching Flashcard screen
+  },
+  cardContainer: {
+    width: "100%", // Controlled by contentContainer padding
+    height: SCREEN_WIDTH * 0.35,
+    borderRadius: 16,
+    marginBottom: 15,
+    overflow: "hidden",
+    // Shadow
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 6,
+  },
+  emptyText: {
+    color: "rgba(255, 255, 255, 0.5)",
+    marginTop: 40,
+    fontSize: 16,
+    textAlign: "center",
+  },
+  floatingButton: {
+    position: "absolute",
+    bottom: 30, // Adjusted to sit properly within the view
+    right: 10,
+    width: 65,
+    height: 65,
+    backgroundColor: "#EFE2B6",
+    borderRadius: 32.5,
+    justifyContent: "center",
+    alignItems: "center",
+    elevation: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+  },
+});

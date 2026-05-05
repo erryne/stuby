@@ -8,11 +8,14 @@ import {
   Dimensions,
   Image,
   ImageBackground,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   View,
 } from "react-native";
 
@@ -20,31 +23,28 @@ import GreenButton from "@/components/GreenButton";
 import { ChevronLeft } from "lucide-react-native";
 
 // Firebase Imports
+import TitleHeader from "@/components/TitleHeader";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { db } from "../../firebaseConfig";
 
-const { width, height } = Dimensions.get("window");
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 const CreateMusicFolder = () => {
   const [musicTitle, setMusicTitle] = useState("");
   const [coverPhoto, setCoverPhoto] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // 🎨 PICK IMAGE
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert(
-        "Permission Denied",
-        "We need access to your photos to set a cover.",
-      );
+      Alert.alert("Permission Denied", "We need access to your photos to set a cover.");
       return;
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
-      aspect: [1, 1], // Square for music covers
+      aspect: [1, 1],
       quality: 0.7,
     });
 
@@ -53,34 +53,24 @@ const CreateMusicFolder = () => {
     }
   };
 
-  // ✅ CREATE MUSIC FOLDER IN DATABASE
   const handleCreate = async () => {
     if (!musicTitle.trim()) {
       Alert.alert("Required", "Please enter a playlist title.");
       return;
     }
-
     setLoading(true);
-
     try {
-      // 1. Reference the collection
-      const folderCollection = collection(db, "musicFolders");
-
-      // 2. Add document to Firestore
-      await addDoc(folderCollection, {
+      await addDoc(collection(db, "musicFolders"), {
         musicFolderTitle: musicTitle.trim(),
-        musicImage: coverPhoto, // Ideally, upload this to Firebase Storage first
+        musicImage: coverPhoto,
         totalSongs: 0,
         totalStreamingMinutes: "0 min",
         isHearted: false,
         createdAt: serverTimestamp(),
       });
-
-      // 3. Success! Go back to the list
       router.back();
     } catch (error) {
-      console.error("Error creating folder:", error);
-      Alert.alert("Error", "Something went wrong. Please try again.");
+      Alert.alert("Error", "Something went wrong.");
     } finally {
       setLoading(false);
     }
@@ -90,101 +80,166 @@ const CreateMusicFolder = () => {
     <ImageBackground
       source={require("../../assets/images/musicBg.png")}
       resizeMode="cover"
-      className="flex-1"
+      style={styles.container}
     >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+       
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
-        className="flex-1"
-        style={{ paddingHorizontal: width * 0.06 }}
+        style={styles.keyboardView}
       >
         {/* HEADER */}
-        <View className="flex-row items-center mt-12 justify-center mb-12 relative">
-          <TouchableOpacity
-            onPress={() => router.back()}
-            className="absolute left-0 p-2"
-          >
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
             <ChevronLeft size={28} color="#ffffff" />
           </TouchableOpacity>
-          <Text className="text-2xl font-bold text-[#FDE6B1]">
-            Create Music Folder
-          </Text>
+          <TitleHeader image={require("../../assets/images/createMusicFolder.png")} />
         </View>
 
-        {/* ADD COVER PHOTO */}
+        {/* IMAGE PICKER BOX */}
         <TouchableOpacity
           activeOpacity={0.85}
           onPress={pickImage}
           disabled={loading}
-          style={{ height: height * 0.2, marginBottom: height * 0.04 }}
-          className="w-full rounded-3xl bg-gray-800/40 border-2 border-dashed border-gray-400 overflow-hidden items-center justify-center"
+          style={styles.imagePicker}
         >
           {coverPhoto ? (
-            <Image
-              source={{ uri: coverPhoto }}
-              resizeMode="cover"
-              className="w-full h-full"
-            />
+            <Image source={{ uri: coverPhoto }} style={styles.coverImage} />
           ) : (
-            <>
-              <View className="w-12 h-12 rounded-full bg-white/20 items-center justify-center">
+            <View style={styles.placeholderContainer}>
+              <View style={styles.plusIconCircle}>
                 <Feather name="plus" size={24} color="#FDE6B1" />
               </View>
-              <Text className="mt-3 font-semibold text-[#FDE6B1]">
-                Add Cover Photo
-              </Text>
-            </>
+              <Text style={styles.addPhotoText}>Add Cover Photo</Text>
+            </View>
           )}
         </TouchableOpacity>
 
-        {/* MUSIC TITLE LABEL */}
-        <Text
-          style={{ marginBottom: height * 0.01 }}
-          className="text-base font-semibold text-white ml-2"
-        >
-          Playlist Title
-        </Text>
-
-        {/* TEXT INPUT */}
-        <View
-          style={{
-            height: height * 0.06,
-            elevation: 5,
-            shadowColor: "#000",
-            shadowOffset: { width: 0, height: 5 },
-            shadowOpacity: 0.3,
-            shadowRadius: 10,
-          }}
-          className="bg-white rounded-full border-2 border-black px-5 justify-center"
-        >
+        {/* INPUT SECTION */}
+        <Text style={styles.label}>Playlist Title</Text>
+        <View style={styles.inputContainer}>
           <TextInput
             value={musicTitle}
             onChangeText={setMusicTitle}
             placeholder="Chill Vibes..."
             placeholderTextColor="#999"
             editable={!loading}
-            className="font-bold text-black text-lg"
+            style={styles.textInput}
           />
         </View>
 
-        {/* CREATE BUTTON */}
-        <View
-          style={{ marginTop: height * 0.04 }}
-          className="flex-row justify-center"
-        >
+        {/* BUTTON SECTION */}
+        <View style={styles.buttonWrapper}>
           {loading ? (
             <ActivityIndicator size="large" color="#FDE6B1" />
           ) : (
             <GreenButton
               title="Create Playlist"
               onPress={handleCreate}
-              widthPercent={0.5}
-              heightPercent={0.06}
+              widthPercent={0.6}
+              heightPercent={0.07}
             />
           )}
         </View>
       </KeyboardAvoidingView>
+      </TouchableWithoutFeedback>
     </ImageBackground>
   );
 };
 
 export default CreateMusicFolder;
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  keyboardView: {
+    flex: 1,
+    paddingHorizontal: SCREEN_WIDTH * 0.06,
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: "5%",
+    marginBottom: SCREEN_WIDTH * 0.1,
+    position: "relative",
+  },
+  backButton: {
+    position: "absolute",
+    left: 0,
+    padding: 5,
+  },
+  headerTitle: {
+    fontSize: SCREEN_WIDTH * 0.06,
+    fontWeight: "bold",
+    color: "#FDE6B1",
+  },
+  imagePicker: {
+    width: "100%",
+    height: SCREEN_WIDTH * 0.5,
+    borderRadius: 24,
+    backgroundColor: "rgba(31, 41, 55, 0.4)", // bg-gray-800/40
+    borderWidth: 2,
+    borderStyle: "dashed",
+    borderColor: "#9ca3af", // border-gray-400
+    overflow: "hidden",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: SCREEN_WIDTH * 0.08,
+  },
+  coverImage: {
+    width: "100%",
+    height: "100%",
+    resizeMode: "cover",
+  },
+  placeholderContainer: {
+    alignItems: "center",
+  },
+  plusIconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  addPhotoText: {
+    marginTop: 12,
+    fontWeight: "600",
+    color: "#FDE6B1",
+    fontSize: 16,
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "white",
+    marginLeft: 8,
+    marginBottom: 8,
+  },
+  inputContainer: {
+    height: SCREEN_WIDTH * 0.13,
+    backgroundColor: "white",
+    borderRadius: 99,
+    borderWidth: 2,
+    borderColor: "black",
+    paddingHorizontal: 20,
+    justifyContent: "center",
+    // Shadow
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 5,
+  },
+  textInput: {
+    fontWeight: "bold",
+    color: "black",
+    fontSize: 18,
+  },
+  buttonWrapper: {
+    marginTop: SCREEN_WIDTH * 0.1,
+    alignItems: "center",
+  },
+  
+});

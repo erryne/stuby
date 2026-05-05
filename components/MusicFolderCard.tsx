@@ -1,14 +1,18 @@
+import { Ionicons } from "@expo/vector-icons";
 import React, { useRef } from "react";
 import {
+  Animated,
+  Dimensions,
   ImageBackground,
+  StyleSheet,
   Text,
+  TouchableOpacity,
   TouchableWithoutFeedback,
   View,
-  Animated,
-  TouchableOpacity,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import EditDeletePopUp from "./EditDeletePopUp";
+
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 interface MusicFolderProps {
   musicFolderId: string;
@@ -23,7 +27,7 @@ interface MusicFolderProps {
   onFolderPress: (id: string) => void;
   isHearted: boolean;
   onHeartToggle: () => void;
-  hideHeart?: boolean; // ✅ key prop
+  hideHeart?: boolean;
 }
 
 const MusicFolderCard: React.FC<MusicFolderProps> = ({
@@ -60,16 +64,13 @@ const MusicFolderCard: React.FC<MusicFolderProps> = ({
   };
 
   const containerProps: any = {
-    className:
-      "flex-1 bg-[#1D173A] rounded-2xl justify-between overflow-hidden p-4",
+    style: styles.folderContainer,
   };
 
   if (musicImage) {
     containerProps.source = musicImage;
     containerProps.resizeMode = "cover";
   }
-
-  
 
   return (
     <TouchableWithoutFeedback
@@ -78,43 +79,32 @@ const MusicFolderCard: React.FC<MusicFolderProps> = ({
       onPress={() => onFolderPress(musicFolderId)}
       disabled={isPopupVisible}
     >
-      <Animated.View
-        style={{ transform: [{ scale: scaleAnim }] }}
-        className="flex-1"
-      >
+      <Animated.View style={[styles.flexFill, { transform: [{ scale: scaleAnim }] }]}>
         {React.createElement(
           musicImage ? ImageBackground : View,
           containerProps,
           <>
-            {musicImage && <View className="absolute inset-0 bg-black/30" />}
+            {musicImage && <View style={styles.imageOverlay} />}
 
             {/* TOP BLUE BAR */}
-            
-{/* TOP BLUE BAR */}
-{/* TOP BLUE BAR */}
-<View className="absolute top-0 left-0 right-0 h-[22%] bg-[#5867A3] z-10 flex-row justify-end items-center px-2">
-  {musicFolderId !== "all" &&
-    [0, 1, 2].map((i) => (
-      <TouchableWithoutFeedback
-        key={i}
-        onPress={() =>
-          setPopupVisibleFolder(isPopupVisible ? null : musicFolderId)
-        }
-      >
-        <View
-          className="w-2 h-2 rounded-full bg-white mx-[2px]"
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        />
-      </TouchableWithoutFeedback>
-    ))}
-</View>
-
-
-
+            <View style={styles.topBar}>
+              {musicFolderId !== "all" &&
+                [0, 1, 2].map((i) => (
+                  <TouchableWithoutFeedback
+                    key={i}
+                    onPress={() => setPopupVisibleFolder(isPopupVisible ? null : musicFolderId)}
+                  >
+                    <View
+                      style={styles.dot}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    />
+                  </TouchableWithoutFeedback>
+                ))}
+            </View>
 
             {/* EDIT/DELETE POPUP */}
             {isPopupVisible && (
-              <View className="absolute top-2 right-2 z-20">
+              <View style={styles.popupContainer}>
                 <EditDeletePopUp
                   onEdit={() => {
                     onFolderEdit?.(musicFolderId);
@@ -128,20 +118,16 @@ const MusicFolderCard: React.FC<MusicFolderProps> = ({
               </View>
             )}
 
-            {/* TITLE */}
-            <View className="mt-5">
-              <Text className="text-white text-xl font-extrabold">
-                {musicFolderTitle}
-              </Text>
-              <Text className="text-white/70 text-xs mt-1">
+            {/* TITLE & INFO */}
+            <View style={styles.titleSection}>
+              <Text style={styles.titleText}>{musicFolderTitle}</Text>
+              <Text style={styles.subText}>
                 {totalSongs} songs · {totalStreamingMinutes}
               </Text>
             </View>
 
             {/* ACTION ROW */}
-            <View className="flex-row items-center justify-end mt-3 gap-2">
-
-              {/* ✅ HEART: hide only for All Songs */}
+            <View style={styles.actionRow}>
               {!hideHeart && (
                 <TouchableOpacity onPress={onHeartToggle}>
                   <Ionicons
@@ -152,11 +138,9 @@ const MusicFolderCard: React.FC<MusicFolderProps> = ({
                 </TouchableOpacity>
               )}
 
-              {/* PLAY BUTTON */}
-              <TouchableOpacity className="bg-white rounded-full p-2">
+              <TouchableOpacity style={styles.playButton}>
                 <Ionicons name="play" size={18} color="#4C5C8A" />
               </TouchableOpacity>
-
             </View>
           </>
         )}
@@ -164,5 +148,74 @@ const MusicFolderCard: React.FC<MusicFolderProps> = ({
     </TouchableWithoutFeedback>
   );
 };
+
+const styles = StyleSheet.create({
+  flexFill: {
+    flex: 1,
+
+  },
+  folderContainer: {
+    flex: 1,
+    backgroundColor: "#1D173A",
+    borderRadius: 16,
+    justifyContent: "space-between",
+    overflow: "hidden",
+    padding: 16,
+  },
+  imageOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0, 0, 0, 0.3)",
+  },
+  topBar: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: SCREEN_WIDTH * 0.07, // Approx 22% of a standard card height
+    backgroundColor: "#5867A3",
+    zIndex: 10,
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    alignItems: "center",
+    paddingHorizontal: 8,
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "white",
+    marginHorizontal: 2,
+  },
+  popupContainer: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    zIndex: 20,
+  },
+  titleSection: {
+    marginTop: 25, // To clear the absolute topBar
+  },
+  titleText: {
+    color: "white",
+    fontSize: 20,
+    fontWeight: "900",
+  },
+  subText: {
+    color: "rgba(255, 255, 255, 0.7)",
+    fontSize: 12,
+    marginTop: 4,
+  },
+  actionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    gap: 8,
+  },
+  playButton: {
+    backgroundColor: "white",
+    borderRadius: 99,
+    padding: 8,
+  },
+});
 
 export default MusicFolderCard;

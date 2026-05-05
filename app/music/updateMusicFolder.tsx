@@ -9,6 +9,7 @@ import {
   ImageBackground,
   KeyboardAvoidingView,
   Platform,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
@@ -17,7 +18,7 @@ import {
 
 import GreenButton from "@/components/GreenButton";
 
-const { width, height } = Dimensions.get("window");
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 const UpdateMusicFolder = () => {
   const params = useLocalSearchParams<{
@@ -34,7 +35,6 @@ const UpdateMusicFolder = () => {
     if (params?.coverPhoto) setCoverPhoto(params.coverPhoto);
   }, [params?.id]);
 
-  // 🎨 PICK IMAGE
   const pickImage = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
@@ -52,7 +52,6 @@ const UpdateMusicFolder = () => {
     }
   };
 
-  // ✅ UPDATE MUSIC FOLDER AND GO BACK TO MUSIC SCREEN
   const handleUpdate = () => {
     if (!musicTitle.trim()) {
       alert("Please enter a music folder title.");
@@ -74,87 +73,58 @@ const UpdateMusicFolder = () => {
     <ImageBackground
       source={require("../../assets/images/musicBg.png")}
       resizeMode="cover"
-      className="flex-1"
+      style={styles.container}
     >
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
-        className="flex-1"
-        style={{ paddingHorizontal: width * 0.06 }}
+        style={styles.keyboardView}
       >
         {/* HEADER */}
-        <View className="flex-row items-center mt-8 justify-center mb-12 relative">
-          <TouchableOpacity
-            onPress={() => router.back()}
-            className="absolute left-0 p-2"
-          >
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
             <ChevronLeft size={28} color="#ffffff" />
           </TouchableOpacity>
-          <Text className="text-2xl font-bold text-[#FDE6B1]">
-            Update Music Folder
-          </Text>
+          <Text style={styles.headerTitle}>Update Music Folder</Text>
         </View>
 
-        {/* COVER PHOTO */}
+        {/* COVER PHOTO PICKER */}
         <TouchableOpacity
           activeOpacity={0.85}
           onPress={pickImage}
-          style={{ height: height * 0.14, marginBottom: height * 0.04 }}
-          className="w-full rounded-2xl bg-gray-400/80 overflow-hidden items-center justify-center"
+          style={styles.imagePicker}
         >
           {coverPhoto ? (
-            <Image
-              source={{ uri: coverPhoto }}
-              resizeMode="cover"
-              className="w-full h-full"
-            />
+            <Image source={{ uri: coverPhoto }} style={styles.coverImage} />
           ) : (
-            <>
-              <View className="w-12 h-12 rounded-full bg-gray-300 items-center justify-center">
+            <View style={styles.placeholderContainer}>
+              <View style={styles.plusIconCircle}>
                 <Feather name="plus" size={24} color="#555" />
               </View>
-              <Text className="mt-3 font-semibold text-white">
-                Add Cover Photo
-              </Text>
-            </>
+              <Text style={styles.addPhotoText}>Add Cover Photo</Text>
+            </View>
           )}
         </TouchableOpacity>
 
-        {/* MUSIC TITLE LABEL */}
-        <Text
-          style={{ marginBottom: height * 0.01 }}
-          className="text-base font-semibold text-black"
-        >
-          Playlist Title
-        </Text>
+        {/* INPUT LABEL */}
+        <Text style={styles.label}>Playlist Title</Text>
 
-        {/* INPUT */}
-        <View
-          style={{
-            height: height * 0.06,
-            shadowColor: "#000",
-            shadowOffset: { width: 0, height: 5 },
-            shadowOpacity: 0.3,
-            shadowRadius: 10,
-          }}
-          className="bg-white rounded-full border-2 border-black px-4 justify-center"
-        >
+        {/* INPUT FIELD */}
+        <View style={styles.inputContainer}>
           <TextInput
             value={musicTitle}
             onChangeText={setMusicTitle}
-            className="font-bold text-black"
+            style={styles.textInput}
+            placeholderTextColor="#999"
           />
         </View>
 
         {/* UPDATE BUTTON */}
-        <View
-          style={{ marginTop: height * 0.03 }}
-          className="flex-row justify-end"
-        >
+        <View style={styles.buttonWrapper}>
           <GreenButton
             title="Update"
             onPress={handleUpdate}
-            widthPercent={0.25}
-            heightPercent={0.05}
+            widthPercent={0.3}
+            heightPercent={0.06}
           />
         </View>
       </KeyboardAvoidingView>
@@ -163,3 +133,94 @@ const UpdateMusicFolder = () => {
 };
 
 export default UpdateMusicFolder;
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  keyboardView: {
+    flex: 1,
+    paddingHorizontal: SCREEN_WIDTH * 0.06,
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: SCREEN_WIDTH * 0.12,
+    marginBottom: SCREEN_WIDTH * 0.1,
+    position: "relative",
+  },
+  backButton: {
+    position: "absolute",
+    left: 0,
+    padding: 5,
+  },
+  headerTitle: {
+    fontSize: SCREEN_WIDTH * 0.06,
+    fontWeight: "bold",
+    color: "#FDE6B1",
+  },
+  imagePicker: {
+    width: "100%",
+    height: SCREEN_WIDTH * 0.35,
+    borderRadius: 20,
+    backgroundColor: "rgba(156, 163, 175, 0.8)", // gray-400/80
+    overflow: "hidden",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: SCREEN_WIDTH * 0.08,
+  },
+  coverImage: {
+    width: "100%",
+    height: "100%",
+    resizeMode: "cover",
+  },
+  placeholderContainer: {
+    alignItems: "center",
+  },
+  plusIconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#d1d5db", // gray-300
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  addPhotoText: {
+    marginTop: 10,
+    fontWeight: "600",
+    color: "white",
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "white", // Changed from black to white to match music theme visibility
+    marginBottom: 8,
+    marginLeft: 4,
+  },
+  inputContainer: {
+    height: SCREEN_WIDTH * 0.13,
+    backgroundColor: "white",
+    borderRadius: 99,
+    borderWidth: 2,
+    borderColor: "black",
+    paddingHorizontal: 20,
+    justifyContent: "center",
+    // Shadow
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  textInput: {
+    fontWeight: "bold",
+    color: "black",
+    fontSize: 18,
+  },
+  buttonWrapper: {
+    marginTop: SCREEN_WIDTH * 0.08,
+    flexDirection: "row",
+    justifyContent: "flex-end",
+  },
+});
