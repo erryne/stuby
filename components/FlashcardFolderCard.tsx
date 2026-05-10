@@ -1,12 +1,16 @@
 import React, { useRef } from "react";
 import {
+  Animated,
+  Dimensions,
   ImageBackground,
+  StyleSheet,
   Text,
   TouchableWithoutFeedback,
   View,
-  Animated,
 } from "react-native";
 import EditDeletePopUp from "./EditDeletePopUp";
+
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 interface FlashcardFolderProps {
   folderId: string;
@@ -47,9 +51,9 @@ const FlashcardFolderCard: React.FC<FlashcardFolderProps> = ({
     }).start();
   };
 
+  const containerStyle = [styles.folderContainer, !image && styles.defaultBg];
   const containerProps: any = {
-    className:
-      "flex-1 bg-[#FFF9E5] rounded-2xl items-center justify-center overflow-hidden p-3",
+    style: containerStyle,
   };
 
   if (image) {
@@ -63,63 +67,137 @@ const FlashcardFolderCard: React.FC<FlashcardFolderProps> = ({
       onPressOut={handlePressOut}
       onPress={() => onFolderPress(folderId)}
       disabled={isPopupVisible}
-
-       style={{
-            
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 5 },
-              shadowOpacity: 0.3,
-              shadowRadius: 10,
-              
-            }}
     >
-      <Animated.View style={{ transform: [{ scale: scaleAnim }] }} className="flex-1">
-        {React.createElement(
-          image ? ImageBackground : View,
-          containerProps,
-          <>
-            {image && <View className="absolute inset-0 bg-white/30" />}
+      <View style={styles.cardWrapper}>
+        <Animated.View style={[styles.flexFill, { transform: [{ scale: scaleAnim }] }]}>
+          {React.createElement(
+            image ? ImageBackground : View,
+            containerProps,
+            <>
+              {image && <View style={styles.imageOverlay} />}
 
-            {/* TOP GREEN BAR */}
-            <View className="absolute top-0 left-0 right-0 h-[20%] bg-[#39675F] z-10 flex-row justify-end items-center px-2">
-              {[0, 1, 2].map((i) => (
+              {/* TOP DARK BAR */}
+              <View style={styles.topBar}>
                 <TouchableWithoutFeedback
-                  key={i}
                   onPress={() =>
                     setPopupVisibleFolder(isPopupVisible ? null : folderId)
                   }
                 >
-                  <View
-                    className="w-2 h-2 rounded-full bg-white mx-[2px]"
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                  />
+                  <View style={styles.dotContainer}>
+                    {[0, 1, 2].map((i) => (
+                      <View key={i} style={styles.dot} />
+                    ))}
+                  </View>
                 </TouchableWithoutFeedback>
-              ))}
-            </View>
-
-            {/* POPUP */}
-            {isPopupVisible && (
-              <View className="absolute top-2 right-2 z-20">
-                <EditDeletePopUp
-                  onEdit={() => {
-                    onFolderEdit(folderId);
-                    setPopupVisibleFolder(null);
-                  }}
-                  onDelete={() => {
-                    onFolderDelete(folderId);
-                    setPopupVisibleFolder(null);
-                  }}
-                />
               </View>
-            )}
 
-            {/* TITLE */}
-            <Text className="text-3xl font-bold text-[#553A00] px-2">{text}</Text>
-          </>
-        )}
-      </Animated.View>
+              {/* POPUP */}
+              {isPopupVisible && (
+                <View style={styles.popupContainer}>
+                  <EditDeletePopUp
+                    onEdit={() => {
+                      onFolderEdit(folderId);
+                      setPopupVisibleFolder(null);
+                    }}
+                    onDelete={() => {
+                      onFolderDelete(folderId);
+                      setPopupVisibleFolder(null);
+                    }}
+                  />
+                </View>
+              )}
+
+              {/* TITLE - Centered below the bar */}
+              <View style={styles.titleWrapper}>
+                <Text 
+                   style={styles.titleText} 
+                   numberOfLines={2}
+                   adjustsFontSizeToFit
+                >
+                  {text}
+                </Text>
+              </View>
+            </>
+          )}
+        </Animated.View>
+      </View>
     </TouchableWithoutFeedback>
   );
 };
 
 export default FlashcardFolderCard;
+const styles = StyleSheet.create({
+  cardWrapper: {
+    height: SCREEN_WIDTH * 0.36, 
+    width: "100%",
+    marginBottom: SCREEN_WIDTH * 0.04, 
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 5,
+    backgroundColor: "transparent",
+  },
+  flexFill: {
+    flex: 1,
+  },
+  folderContainer: {
+    flex: 1,
+    borderRadius: 16,
+    overflow: "hidden",
+  },
+  defaultBg: {
+    backgroundColor: "#FFF9E5",
+  },
+  imageOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+  },
+  topBar: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    // top green header
+    height: SCREEN_WIDTH * 0.08, 
+    backgroundColor: "#39675F",
+    zIndex: 10,
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    alignItems: "center",
+    paddingHorizontal: 12,
+  },
+  dotContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 5,
+  },
+  dot: {
+    width: SCREEN_WIDTH * 0.015,
+    height: SCREEN_WIDTH * 0.015,
+    borderRadius: SCREEN_WIDTH * 0.01,
+    backgroundColor: "white",
+    marginHorizontal: 1.5,
+  },
+  popupContainer: {
+    position: "absolute",
+    top: SCREEN_WIDTH * 0.09, 
+    right: 10,
+    zIndex: 30,
+  },
+  titleWrapper: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    // under the topBar
+    paddingTop: SCREEN_WIDTH * 0.08, 
+    paddingHorizontal: 20,
+  },
+  titleText: {
+    fontSize: SCREEN_WIDTH * 0.075,
+    fontWeight: "bold",
+    color: "#553A00",
+    textAlign: "center",
+    marginBottom: 10,
+  },
+});
