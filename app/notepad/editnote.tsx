@@ -1,58 +1,74 @@
+import CustomHeader from "@/components/CustomHeader";
+import { DeleteAlert } from "@/components/DeleteAlert";
+import GeometricBackground from "@/components/GeometricBackground";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { doc, serverTimestamp, updateDoc } from "firebase/firestore";
+import {
+  deleteDoc,
+  doc,
+  getDoc,
+  serverTimestamp,
+  updateDoc,
+} from "firebase/firestore";
 import React, { useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    ImageBackground,
-    Keyboard,
-    KeyboardAvoidingView,
-    Platform,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    TouchableWithoutFeedback,
-    View,
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
-
-// Firebase Config
+import { SafeAreaView } from "react-native-safe-area-context";
+import EditDeletePopUp from "../../components/EditDeletePopUp";
 import { db } from "../../firebaseConfig";
 
 export default function EditNoteScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
 
-  // State
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [noteData, setNoteData] = useState<any>(null); // State para sa note document
 
-  // 1. Properly handle params to ensure they are strings and not arrays
+  // Fetch note data para makuha ang isFavorite status
   useEffect(() => {
-    if (params.title) {
-      setTitle(Array.isArray(params.title) ? params.title[0] : params.title);
-    }
-    if (params.content) {
-      setContent(
-        Array.isArray(params.content) ? params.content[0] : params.content,
-      );
-    }
-  }, [params.title, params.content]);
+    const fetchNote = async () => {
+      if (!params.id) return;
+      try {
+        const docRef = doc(db, "notes", params.id as string);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          setNoteData(data);
+          setTitle(data.title || "");
+          setContent(data.content || "");
+        }
+      } catch (e) {
+        console.error("Error fetching note:", e);
+      }
+    };
+    fetchNote();
+  }, [params.id]);
 
-  /* ---------------- LOGIC: UPDATE DATABASE ---------------- */
+  useEffect(() => {
+    if (params.mode === "edit") setIsEditing(true);
+  }, [params.mode]);
+
   const handleUpdate = async () => {
     if (!title.trim() || !content.trim()) {
-      Alert.alert("Wait!", "Title and content cannot be empty.");
+      Alert.alert("Empty Fields", "Title and content cannot be empty.");
       return;
     }
-
-    if (!params.id) {
-      Alert.alert("Error", "Note ID is missing.");
-      return;
-    }
-
     setLoading(true);
     try {
       const noteRef = doc(db, "notes", params.id as string);
@@ -61,152 +77,245 @@ export default function EditNoteScreen() {
         content: content.trim(),
         updatedAt: serverTimestamp(),
       });
+      setIsEditing(false);
       router.back();
     } catch (error) {
-      console.error("Update Error:", error);
-      Alert.alert("Error", "Failed to update the note.");
+      Alert.alert("Error", "Could not update the note.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!params.id) return;
+    const noteId = params.id as string;
+    const favId = `note_${noteId}`;
+
+    console.log("--- START DEBUGGING ---");
+    console.log("Attempting to delete Note:", `notes/${noteId}`);
+    console.log("Attempting to delete Favorite:", `favorites/${favId}`);
+
+    setLoading(true);
+    try {
+      // 1. Delete Note
+      await deleteDoc(doc(db, "notes", noteId));
+      console.log("Note deleted successfully.");
+
+      // 2. Delete Favorite (Directly)
+      await deleteDoc(doc(db, "favorites", favId));
+      console.log("Favorite delete command sent.");
+
+      router.back();
+    } catch (error) {
+      // ITO ANG PINAKA-IMPORTANTE NA PART: Dito lalabas ang tunay na error message
+      console.error("FIREBASE ERROR DETAILED:", JSON.stringify(error, null, 2));
+      Alert.alert(
+        "Error",
+        "Check the console logs for the specific Firebase error.",
+      );
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <ImageBackground
-      source={require("../../assets/images/notepadBg.png")}
-      style={styles.background}
-      resizeMode="cover"
+    <LinearGradient
+      colors={["#7DD3FC", "#38BDF8", "#0EA5E9"]}
+      style={styles.flexOne}
     >
+      <View style={StyleSheet.absoluteFillObject}>
+        <GeometricBackground />
+      </View>
+      <SafeAreaView>
+        <CustomHeader />
+      </SafeAreaView>
+
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={{ flex: 1 }}
+        style={styles.flexOne}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 100 : 0}
       >
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-          <View style={styles.container} pointerEvents="box-none">
-            {/* Header Row */}
-            <View style={styles.header}>
-              <View style={styles.headerLeft}>
-                <TouchableOpacity
-                  onPress={() => router.back()}
-                  style={styles.backButton}
-                >
-                  <Ionicons name="chevron-back" size={35} color="#FDE6B1" />
-                </TouchableOpacity>
+        <View style={styles.container}>
+          <View style={styles.header}>
+            <View style={styles.headerLeft}>
+              <TouchableOpacity
+                onPress={() => router.back()}
+                style={styles.iconBtn}
+              >
+                <Ionicons name="chevron-back" size={28} color="#334155" />
+              </TouchableOpacity>
 
+              <View style={styles.titleWrapper}>
                 <TextInput
-                  placeholder="Title"
-                  placeholderTextColor="rgba(253, 230, 177, 0.5)"
+                  placeholder="ENTER TITLE"
+                  placeholderTextColor="rgba(51, 65, 85, 0.4)"
                   value={title}
                   onChangeText={setTitle}
-                  style={styles.titleInput}
+                  editable={isEditing}
+                  style={[styles.titleInput, { opacity: isEditing ? 1 : 0.8 }]}
                 />
               </View>
-
-              <TouchableOpacity
-                onPress={handleUpdate}
-                disabled={loading}
-                style={[
-                  styles.updateButton,
-                  { backgroundColor: loading ? "#9ca3af" : "#7ED992" },
-                ]}
-              >
-                {loading ? (
-                  <ActivityIndicator size="small" color="#1D1D1D" />
-                ) : (
-                  <Text style={styles.updateText}>UPDATE</Text>
-                )}
-              </TouchableOpacity>
             </View>
 
-            {/* Paper Note Area */}
-            <View style={styles.noteArea} pointerEvents="box-none">
+            <View style={styles.headerRight}>
+              {isEditing ? (
+                <TouchableOpacity
+                  onPress={handleUpdate}
+                  style={styles.customButton}
+                  activeOpacity={0.8}
+                >
+                  {loading ? (
+                    <ActivityIndicator size="small" color="#065F46" />
+                  ) : (
+                    <Text style={styles.btnText}>UPDATE</Text>
+                  )}
+                </TouchableOpacity>
+              ) : (
+                <View style={styles.menuAnchorContainer}>
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={() => setShowMenu(!showMenu)}
+                    style={styles.menuIconButton}
+                  >
+                    <Ionicons
+                      name="ellipsis-horizontal"
+                      size={20}
+                      color="#334155"
+                    />
+                  </TouchableOpacity>
+                  {showMenu && (
+                    <View style={styles.popupDropdownContainer}>
+                      <EditDeletePopUp
+                        onEdit={() => {
+                          setIsEditing(true);
+                          setShowMenu(false);
+                        }}
+                        onDelete={() => {
+                          setShowMenu(false);
+                          setShowDeleteModal(true);
+                        }}
+                      />
+                    </View>
+                  )}
+                </View>
+              )}
+            </View>
+          </View>
+
+          <View style={styles.noteArea}>
+            <View style={styles.linesContainer}>
+              {Array.from({ length: 40 }).map((_, i) => (
+                <View key={i} style={styles.lineRow} />
+              ))}
+            </View>
+
+            <ScrollView
+              style={styles.flexOne}
+              contentContainerStyle={{ flexGrow: 1, paddingBottom: 50 }}
+              keyboardShouldPersistTaps="handled"
+            >
               <TextInput
                 multiline
-                placeholder="Start writing..."
+                placeholder="Enter notes...."
+                placeholderTextColor="rgba(51, 65, 85, 0.4)"
                 textAlignVertical="top"
                 value={content}
                 onChangeText={setContent}
+                editable={isEditing}
                 style={styles.contentInput}
-                scrollEnabled={true}
-                // Ensure editable is true by default
-                editable={!loading}
               />
-            </View>
+            </ScrollView>
           </View>
-        </TouchableWithoutFeedback>
+
+          <DeleteAlert
+            visible={showDeleteModal}
+            title={`Delete "${title || "Note"}"?`}
+            message="Are you sure you want to delete this note?"
+            onCancel={() => setShowDeleteModal(false)}
+            onConfirm={handleDelete}
+          />
+        </View>
       </KeyboardAvoidingView>
-    </ImageBackground>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  background: {
-    flex: 1,
-  },
-  container: {
-    flex: 1,
-  },
+  flexOne: { flex: 1 },
+  container: { flex: 1 },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 20,
-    marginTop: 50,
+    marginTop: 10,
     marginBottom: 20,
-    zIndex: 20,
   },
-  headerLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
+  headerLeft: { flexDirection: "row", alignItems: "center", flex: 1 },
+  headerRight: {
+    minWidth: 90,
+    height: 40,
+    justifyContent: "center",
+    alignItems: "flex-end",
   },
-  backButton: {
-    marginRight: 8,
+  iconBtn: {
+    padding: 8,
+    backgroundColor: "white",
+    borderRadius: 12,
+    marginRight: 12,
   },
+  titleWrapper: { flex: 1 },
   titleInput: {
-    color: "#FDE6B1",
+    color: "#334155",
     fontSize: 24,
     fontWeight: "900",
-    flex: 1,
-    paddingVertical: 5,
+    textTransform: "uppercase",
   },
-  updateButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+  customButton: {
+    backgroundColor: "#A7F3D0",
     borderRadius: 16,
-    minWidth: 80,
-    alignItems: "center",
+    height: 40,
+    width: 80,
     justifyContent: "center",
-    elevation: 5,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
+    alignItems: "center",
   },
-  updateText: {
-    color: "#1D1D1D",
-    fontWeight: "900",
-    fontSize: 12,
+  btnText: { color: "#065F46", fontWeight: "900", fontSize: 12 },
+  menuAnchorContainer: { position: "relative", zIndex: 50 },
+  menuIconButton: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  popupDropdownContainer: {
+    position: "absolute",
+    top: 10,
+    right: 0,
+    zIndex: 100,
   },
   noteArea: {
     flex: 1,
     marginHorizontal: 20,
     marginBottom: 40,
-    backgroundColor: "#FFF9E3",
+    backgroundColor: "#FEF9C3",
     borderRadius: 40,
-    padding: 24,
-    elevation: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    zIndex: 10,
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    borderWidth: 5,
+    borderColor: "#FFFFFF",
+    overflow: "hidden",
+  },
+  linesContainer: { ...StyleSheet.absoluteFillObject, paddingTop: 24 },
+  lineRow: {
+    height: 30,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(51, 65, 85, 0.08)",
   },
   contentInput: {
+    color: "#334155",
+    fontSize: 16,
+    lineHeight: 30,
     flex: 1,
-    color: "#502707",
-    fontSize: 18,
-    lineHeight: 28,
-    // Ensures the tap area fills the entire paper
-    height: "100%",
+    textAlignVertical: "top",
   },
 });

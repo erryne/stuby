@@ -1,6 +1,6 @@
+import { Plus } from "lucide-react-native";
 import React from "react";
 import { TouchableOpacity, ViewStyle } from "react-native";
-import { Plus } from "lucide-react-native";
 
 interface AddFloatingButtonProps {
   onPress: () => void;
@@ -13,8 +13,8 @@ interface AddFloatingButtonProps {
 const AddFloatingButton: React.FC<AddFloatingButtonProps> = ({
   onPress,
   size = 64,
-  backgroundColor = "#F5CE8E",
-  iconColor = "black",
+  backgroundColor = "#334155",
+  iconColor = "white",
   style,
 }) => {
   return (
@@ -34,13 +34,10 @@ const AddFloatingButton: React.FC<AddFloatingButtonProps> = ({
           right: 24,
           elevation: 6, // Android shadow
 
-            
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 5 },
-              shadowOpacity: 0.3,
-              shadowRadius: 10,
-              
-            
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 5 },
+          shadowOpacity: 0.3,
+          shadowRadius: 10,
         },
         style,
       ]}

@@ -1,575 +1,428 @@
-// import Images from "@/constants/images";
-// import { Audio } from "expo-av";
-// import { router, useLocalSearchParams } from "expo-router";
-// import { Check, ChevronLeft, Pencil } from "lucide-react-native";
-// import React, { useEffect, useRef, useState } from "react";
-// import { ImageBackground, Text, TouchableOpacity, View } from "react-native";
-// import AppHeader from "../../../components/AppHeader";
-// import PlayerCard from "../../../components/PlayerCard";
-// import SongList from "../../../components/SongList";
+import { Ionicons } from "@expo/vector-icons";
+import { Audio } from "expo-av";
+import * as DocumentPicker from "expo-document-picker";
+import * as Haptics from "expo-haptics";
+import { LinearGradient } from "expo-linear-gradient";
+import { router, useLocalSearchParams } from "expo-router";
+import {
+  Check,
+  Pause,
+  Pencil,
+  Play,
+  PlusCircle,
+  SkipForward,
+} from "lucide-react-native";
+import React, { useEffect, useRef, useState } from "react";
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import Animated, { SlideInDown, SlideOutDown } from "react-native-reanimated";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-// import * as DocumentPicker from "expo-document-picker";
-// import { Alert, Modal, TextInput } from "react-native";
+// Components & Context
+import AddMusicModal from "../../components/AddMusicModal";
+import CustomHeader from "../../components/CustomHeader";
+import GeometricBackground from "../../components/GeometricBackground";
+import MusicPlayerModal from "../../components/MusicPlayerModal";
+import SongList from "../../components/SongList";
+import { useMusic } from "./../context/MusicContext";
 
-// // ================= SONG DATABASE =================
-// export const songsByFolder: Record<string, any[]> = {
-//   // UPBEAT
-//   "1": [
-//     {
-//       id: "u1",
-//       title: "Chances",
-//       file: require("../../../assets/music/upbeat1.mp3"),
-//     },
-//     {
-//       id: "u2",
-//       title: "Joy",
-//       file: require("../../../assets/music/upbeat2.mp3"),
-//     },
-//     {
-//       id: "u3",
-//       title: "Energizer",
-//       file: require("../../../assets/music/upbeat3.mp3"),
-//     },
-//     {
-//       id: "u4",
-//       title: "Summer Sound",
-//       file: require("../../../assets/music/upbeat4.mp3"),
-//     },
-//     {
-//       id: "u5",
-//       title: "Funky",
-//       file: require("../../../assets/music/upbeat5.mp3"),
-//     },
-//     {
-//       id: "u6",
-//       title: "Carnival",
-//       file: require("../../../assets/music/upbeat6.mp3"),
-//     },
-//     {
-//       id: "u7",
-//       title: "Donut",
-//       file: require("../../../assets/music/upbeat7.mp3"),
-//     },
-//     {
-//       id: "u8",
-//       title: "Follow the Sun",
-//       file: require("../../../assets/music/upbeat8.mp3"),
-//     },
-//     {
-//       id: "u9",
-//       title: "Sweet Talks",
-//       file: require("../../../assets/music/upbeat9.mp3"),
-//     },
-//     {
-//       id: "u10",
-//       title: "Last Summer",
-//       file: require("../../../assets/music/upbeat10.mp3"),
-//     },
-//   ],
-//   // CLASSICAL
-//   "2": [
-//     {
-//       id: "c1",
-//       title: "Gymnopédie No.1 4",
-//       file: require("../../../assets/music/classical1.mp3"),
-//     },
-//     {
-//       id: "c2",
-//       title: "Ballet Suite_ 1.Waltz 4",
-//       file: require("../../../assets/music/classical2.mp3"),
-//     },
-//     {
-//       id: "c3",
-//       title: "The Nutcraker",
-//       file: require("../../../assets/music/classical3.mp3"),
-//     },
-//     {
-//       id: "c4",
-//       title: "Hungarian Dance 5",
-//       file: require("../../../assets/music/classical4.mp3"),
-//     },
-//     {
-//       id: "c5",
-//       title: "Pure Dream",
-//       file: require("../../../assets/music/classical5.mp3"),
-//     },
-//   ],
-//   // POP
-//   "3": [
-//     {
-//       id: "p1",
-//       title: "Espresso",
-//       file: require("../../../assets/music/pop/pop1.mp3"),
-//     },
-//     {
-//       id: "p2",
-//       title: "Birds of a Feather",
-//       file: require("../../../assets/music/pop/pop2.mp3"),
-//     },
-//     {
-//       id: "p3",
-//       title: "Die With A Smile",
-//       file: require("../../../assets/music/pop/pop3.mp3"),
-//     },
-//     {
-//       id: "p4",
-//       title: "Golden",
-//       file: require("../../../assets/music/pop/pop4.mp3"),
-//     },
-//     {
-//       id: "p5",
-//       title: "Cruel Summer",
-//       file: require("../../../assets/music/pop/pop5.mp3"),
-//     },
-//     {
-//       id: "p6",
-//       title: "Levitating",
-//       file: require("../../../assets/music/pop/pop6.mp3"),
-//     },
-//     {
-//       id: "p7",
-//       title: "Flowers",
-//       file: require("../../../assets/music/pop/pop7.mp3"),
-//     },
-//     {
-//       id: "p8",
-//       title: "As It Was",
-//       file: require("../../../assets/music/pop/pop8.mp3"),
-//     },
-//     {
-//       id: "p9",
-//       title: "Anti-Hero",
-//       file: require("../../../assets/music/pop/pop9.mp3"),
-//     },
-//     {
-//       id: "p10",
-//       title: "Greedy",
-//       file: require("../../../assets/music/pop/pop10.mp3"),
-//     },
-//   ],
-//   // NATURE
-//   "4": [
-//     {
-//       id: "n1",
-//       title: "Rain Sounds",
-//       file: require("../../../assets/music/nature/nature1.mp3"),
-//     },
-//     {
-//       id: "n2",
-//       title: "Forest Ambience",
-//       file: require("../../../assets/music/nature/nature2.mp3"),
-//     },
-//     {
-//       id: "n3",
-//       title: "Ocean Waves",
-//       file: require("../../../assets/music/nature/nature3.mp3"),
-//     },
-//     {
-//       id: "n4",
-//       title: "Sounds of Nature",
-//       artist: "Aylex",
-//       file: require("../../../assets/music/nature/nature4.mp3"),
-//     }, //
-//     {
-//       id: "n5",
-//       title: "Whistle",
-//       artist: "Pufino",
-//       file: require("../../../assets/music/nature/nature5.mp3"),
-//     }, //
-//     {
-//       id: "n6",
-//       title: "Tranquility",
-//       artist: "Project Ex",
-//       file: require("../../../assets/music/nature/nature6.mp3"),
-//     }, //
-//     {
-//       id: "n7",
-//       title: "We Are",
-//       artist: "Moavii",
-//       file: require("../../../assets/music/nature/nature7.mp3"),
-//     }, //
-//     {
-//       id: "n8",
-//       title: "Dawn",
-//       artist: "Alegend",
-//       file: require("../../../assets/music/nature/nature8.mp3"),
-//     }, //
-//     {
-//       id: "n9",
-//       title: "Soaked",
-//       artist: "Pufino",
-//       file: require("../../../assets/music/nature/nature9.mp3"),
-//     }, //
-//     {
-//       id: "n10",
-//       title: "Wallflower",
-//       artist: "Epic Spectrum",
-//       file: require("../../../assets/music/nature/nature10.mp3"),
-//     }, //
-//   ],
-//   // LOFI
-//   "5": [
-//     {
-//       id: "l1",
-//       title: "Lofi Chill",
-//       file: require("../../../assets/music/pop1.mp3"),
-//     },
-//   ],
-// };
+// Firebase
+import { getAuth } from "firebase/auth";
+import {
+  arrayRemove,
+  arrayUnion,
+  collection,
+  deleteDoc,
+  doc,
+  onSnapshot,
+  orderBy,
+  query,
+  serverTimestamp,
+  updateDoc,
+  where,
+  writeBatch,
+} from "firebase/firestore";
+import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
+import { db, storage } from "../../firebaseConfig";
 
-// export default function Playlist() {
-//   const params = useLocalSearchParams();
-//   const folderId = Array.isArray(params?.id) ? params.id[0] : params?.id;
-//   const folderTitle = Array.isArray(params?.title)
-//     ? params.title[0]
-//     : (params?.title ?? "Playlist");
+export default function Playlist() {
+  const params = useLocalSearchParams();
+  const auth = getAuth();
+  const user = auth.currentUser;
 
-//   /* ================= ADD SONG MODAL ================= */
+  const {
+    playSong,
+    currentSong,
+    setCurrentSong,
+    setCurrentFolderImage,
+    isPlaying,
+    togglePlay,
+    handleNext,
+  } = useMusic();
 
-//   const [isAddModalVisible, setIsAddModalVisible] = useState(false);
-//   const [newSongTitle, setNewSongTitle] = useState("");
-//   const [newSongFile, setNewSongFile] = useState<any>(null);
+  const folderId = Array.isArray(params?.id)
+    ? params.id[0]
+    : (params?.id ?? "");
+  const folderTitle = Array.isArray(params?.title)
+    ? params.title[0]
+    : (params?.title ?? "Playlist");
+  const folderImage = Array.isArray(params?.image)
+    ? params.image[0]
+    : (params?.image ?? "");
 
-//   /* ================= INITIAL SONG LIST ================= */
-//   const initialSongs =
-//     folderId === "all"
-//       ? Object.values(songsByFolder).flat() // ✅ Compile all songs from all folders
-//       : folderId && songsByFolder[folderId]
-//         ? songsByFolder[folderId]
-//         : [];
+  const [playlistSongs, setPlaylistSongs] = useState<any[]>([]);
+  const [masterLibrary, setMasterLibrary] = useState<any[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isAddModalVisible, setIsAddModalVisible] = useState(false);
+  const [isPlayerModalVisible, setIsPlayerModalVisible] = useState(false);
+  const [stagedSongs, setStagedSongs] = useState<any[]>([]);
 
-//   const [playlistSongs, setPlaylistSongs] = useState(initialSongs);
-//   const [isEditing, setIsEditing] = useState(false);
+  // Ref para ma-track kung ang pagbabago ay dahil sa deletion
+  const isDeletionPending = useRef(false);
 
-//   /* ================= PLAYER STATE ================= */
-//   const soundRef = useRef<Audio.Sound | null>(null);
-//   const [currentIndex, setCurrentIndex] = useState(0);
-//   const [isPlaying, setIsPlaying] = useState(false);
-//   const [duration, setDuration] = useState(0);
-//   const [position, setPosition] = useState(0);
-//   const [isShuffle, setIsShuffle] = useState(false);
-//   const [isRepeat, setIsRepeat] = useState(false);
-//   const [songDurations, setSongDurations] = useState<number[]>([]);
+  // Logic: Mawawala lang ang song kung ito ay dinelete, hindi dahil nag-navigate ka
+  useEffect(() => {
+    if (currentSong && playlistSongs.length > 0 && isDeletionPending.current) {
+      const isStillInPlaylist = playlistSongs.some(
+        (song) => song.id === currentSong.id,
+      );
+      if (!isStillInPlaylist) {
+        setCurrentSong(null);
+      }
+      isDeletionPending.current = false;
+    }
+  }, [playlistSongs]);
 
-//   const repeatRef = useRef(isRepeat);
-//   useEffect(() => {
-//     repeatRef.current = isRepeat;
-//   }, [isRepeat]);
+  const handleSelectSong = (id: string) => {
+    const index = playlistSongs.findIndex((s) => s.id === id);
+    if (index !== -1) {
+      setCurrentFolderImage(folderImage || null);
+      playSong(playlistSongs[index], playlistSongs, index, folderImage);
+      setIsPlayerModalVisible(true);
+    }
+  };
 
-//   /* ================= IMPORT MP4 ================= */
+  const handleDeleteSong = async (id: string) => {
+    isDeletionPending.current = true; // Signal na delete ang action
+    if (folderId === "all") {
+      await deleteDoc(doc(db, "songs", id));
+    } else {
+      await updateDoc(doc(db, "songs", id), {
+        playlistIds: arrayRemove(folderId),
+      });
+    }
+  };
 
-//   const handleImportMusic = async () => {
-//     try {
-//       const result = await DocumentPicker.getDocumentAsync({
-//         type: "video/mp4", // STRICT MP4
-//         copyToCacheDirectory: true,
-//       });
+  const uploadAudioAsync = async (uri: string, fileName: string) => {
+    const blob: any = await new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.onload = () => resolve(xhr.response);
+      xhr.onerror = () => reject(new TypeError("Network request failed"));
+      xhr.responseType = "blob";
+      xhr.open("GET", uri, true);
+      xhr.send(null);
+    });
+    const fileRef = ref(
+      storage,
+      `users/${user?.uid}/music/${Date.now()}-${fileName}`,
+    );
+    await uploadBytes(fileRef, blob);
+    blob.close();
+    return await getDownloadURL(fileRef);
+  };
 
-//       if (result.canceled) return;
+  const handleImportMusic = async () => {
+    const result = await DocumentPicker.getDocumentAsync({
+      type: "audio/*",
+      multiple: true,
+    });
+    if (!result.canceled) {
+      setUploading(true);
+      try {
+        const newStagedFiles: any[] = [];
+        for (const file of result.assets) {
+          const { sound } = await Audio.Sound.createAsync(
+            { uri: file.uri },
+            { shouldPlay: false },
+          );
+          const status = await sound.getStatusAsync();
+          await sound.unloadAsync();
+          newStagedFiles.push({
+            uri: file.uri,
+            title: file.name.split(".")[0],
+            duration:
+              status.isLoaded && status.durationMillis
+                ? `${Math.floor(status.durationMillis / 60000)}:${Math.floor(
+                    (status.durationMillis % 60000) / 1000,
+                  )
+                    .toString()
+                    .padStart(2, "0")}`
+                : "0:00",
+          });
+        }
+        setStagedSongs((prev) => [...prev, ...newStagedFiles]);
+      } catch (err) {
+        Alert.alert("Error", "Could not read audio file.");
+      } finally {
+        setUploading(false);
+      }
+    }
+  };
 
-//       const file = result.assets[0];
+  const handleUploadAllStaged = async () => {
+    if (stagedSongs.length === 0 || !user) return;
+    setUploading(true);
+    try {
+      const batch = writeBatch(db);
+      for (const song of stagedSongs) {
+        const permanentUrl = await uploadAudioAsync(song.uri, song.title);
+        const newDocRef = doc(collection(db, "songs"));
+        batch.set(newDocRef, {
+          userId: user.uid,
+          title: song.title,
+          fileUri: permanentUrl,
+          duration: song.duration,
+          playlistIds: folderId === "all" ? ["all"] : ["all", folderId],
+          createdAt: serverTimestamp(),
+        });
+      }
+      await batch.commit();
+      setIsAddModalVisible(false);
+      setStagedSongs([]);
+    } catch (e) {
+      Alert.alert("Error", "Upload failed");
+    } finally {
+      setUploading(false);
+    }
+  };
 
-//       if (!file.name.toLowerCase().endsWith(".mp4")) {
-//         Alert.alert("Only MP4 files are allowed!");
-//         return;
-//       }
+  const toggleSongInPlaylist = async (
+    songId: string,
+    isInPlaylist: boolean,
+  ) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    await updateDoc(doc(db, "songs", songId), {
+      playlistIds: isInPlaylist ? arrayRemove(folderId) : arrayUnion(folderId),
+    });
+  };
 
-//       setNewSongFile(file);
+  useEffect(() => {
+    if (!folderId || !user) return;
+    const qPlaylist = query(
+      collection(db, "songs"),
+      where("userId", "==", user.uid),
+      where("playlistIds", "array-contains", folderId),
+      orderBy("createdAt", "desc"),
+    );
+    const unsubscribePlaylist = onSnapshot(qPlaylist, (snapshot) =>
+      setPlaylistSongs(snapshot.docs.map((d) => ({ id: d.id, ...d.data() }))),
+    );
+    const qMaster = query(
+      collection(db, "songs"),
+      where("userId", "==", user.uid),
+      orderBy("createdAt", "desc"),
+    );
+    const unsubscribeMaster = onSnapshot(qMaster, (snapshot) =>
+      setMasterLibrary(snapshot.docs.map((d) => ({ id: d.id, ...d.data() }))),
+    );
+    return () => {
+      unsubscribePlaylist();
+      unsubscribeMaster();
+    };
+  }, [folderId, user?.uid]);
 
-//       // Auto fill title
-//       const nameWithoutExt = file.name.replace(".mp4", "");
-//       setNewSongTitle(nameWithoutExt);
-//     } catch (error) {
-//       console.log(error);
-//     }
-//   };
+  return (
+    <LinearGradient
+      colors={["#7DD3FC", "#38BDF8", "#0EA5E9"]}
+      style={styles.gradientContainer}
+    >
+      <View style={StyleSheet.absoluteFillObject}>
+        <GeometricBackground />
+      </View>
+      <SafeAreaView>
+        <CustomHeader />
+      </SafeAreaView>
 
-//   /* ================= ADD SONG================= */
+      <View style={styles.headerContainer}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.iconBtn}>
+          <Ionicons name="chevron-back" size={28} color="#334155" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle} numberOfLines={1}>
+          {folderTitle}
+        </Text>
+        <TouchableOpacity onPress={() => setIsEditing(!isEditing)}>
+          {isEditing ? (
+            <View style={styles.checkIconWrapper}>
+              <Check size={20} color="#334155" />
+            </View>
+          ) : (
+            <Pencil size={24} color="#334155" />
+          )}
+        </TouchableOpacity>
+      </View>
 
-//   const handleAddSong = () => {
-//     if (!newSongTitle || !newSongFile) {
-//       Alert.alert("Please enter title and import MP4 file");
-//       return;
-//     }
+      <View style={styles.mainContentContainer}>
+        <TouchableOpacity
+          onPress={() => setIsAddModalVisible(true)}
+          style={styles.actionButton}
+        >
+          <PlusCircle size={24} color="#ffffff" />
+          <Text style={styles.actionButtonText}>
+            {folderId === "all" ? "Upload Songs" : "Add Songs"}
+          </Text>
+        </TouchableOpacity>
+        <SongList
+          songs={playlistSongs}
+          currentId={currentSong?.id || ""}
+          isEditing={isEditing}
+          onSelect={handleSelectSong}
+          onDelete={handleDeleteSong}
+        />
+      </View>
 
-//     const newSong = {
-//       id: Date.now().toString(),
-//       title: newSongTitle,
-//       file: { uri: newSongFile.uri },
-//     };
+      {currentSong && (
+        <Animated.View
+          entering={SlideInDown}
+          exiting={SlideOutDown}
+          style={styles.miniPlayer}
+        >
+          <TouchableOpacity
+            style={styles.miniPlayerContent}
+            onPress={() => setIsPlayerModalVisible(true)}
+          >
+            <Text numberOfLines={1} style={styles.miniPlayerTitle}>
+              {currentSong.title}
+            </Text>
+            <View style={styles.miniPlayerControls}>
+              <TouchableOpacity
+                onPress={(e) => {
+                  e.stopPropagation();
+                  togglePlay();
+                }}
+                style={styles.icon}
+              >
+                {isPlaying ? (
+                  <Pause size={24} color="#334155" fill="#334155" />
+                ) : (
+                  <Play size={24} color="#334155" fill="#334155" />
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={(e) => {
+                  e.stopPropagation();
+                  handleNext();
+                }}
+                style={styles.icon}
+              >
+                <SkipForward size={24} color="#334155" fill="#334155" />
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </Animated.View>
+      )}
 
-//     setPlaylistSongs((prev) => [...prev, newSong]);
+      <AddMusicModal
+        visible={isAddModalVisible}
+        onClose={() => setIsAddModalVisible(false)}
+        folderId={folderId}
+        stagedSongs={stagedSongs}
+        setStagedSongs={setStagedSongs}
+        uploading={uploading}
+        masterLibrary={masterLibrary}
+        onImportMusic={handleImportMusic}
+        onUploadAllStaged={handleUploadAllStaged}
+        onToggleSongInPlaylist={toggleSongInPlaylist}
+      />
+      <MusicPlayerModal
+        visible={isPlayerModalVisible}
+        onClose={() => setIsPlayerModalVisible(false)}
+      />
+    </LinearGradient>
+  );
+}
 
-//     setNewSongTitle("");
-//     setNewSongFile(null);
-//     setIsAddModalVisible(false);
-//   };
-
-//   /* ================= FORMAT TOTAL TIME ================= */
-//   const formatTotalDuration = (ms: number) => {
-//     if (!ms) return "0 min";
-//     const totalSeconds = Math.floor(ms / 1000);
-//     const minutes = Math.floor(totalSeconds / 60);
-//     const seconds = totalSeconds % 60;
-//     if (minutes === 0) return `${seconds} sec`;
-//     if (seconds === 0) return `${minutes} min`;
-//     return `${minutes} min ${seconds} sec`;
-//   };
-
-//   const totalDurationMillis = songDurations.reduce((a, b) => a + b, 0);
-//   const formattedTotalDuration = formatTotalDuration(totalDurationMillis);
-
-//   /* ================= LOAD SONG ================= */
-//   const loadSong = async (index: number, autoPlay = true) => {
-//     if (playlistSongs.length === 0) return;
-//     if (soundRef.current) await soundRef.current.unloadAsync();
-
-//     const selected = playlistSongs[index];
-
-//     const fileSource = selected.file?.uri
-//       ? { uri: selected.file.uri }
-//       : selected.file;
-
-//     const { sound } = await Audio.Sound.createAsync(
-//       fileSource,
-
-//       { shouldPlay: autoPlay },
-//       (status: any) => {
-//         if (!status.isLoaded) return;
-//         setDuration(status.durationMillis || 0);
-//         setPosition(status.positionMillis || 0);
-//         setIsPlaying(status.isPlaying);
-
-//         if (status.didJustFinish) {
-//           if (repeatRef.current) loadSong(index);
-//           else autoNext(index);
-//         }
-//       },
-//     );
-
-//     soundRef.current = sound;
-//     setCurrentIndex(index);
-//   };
-
-//   const autoNext = (index: number) => {
-//     if (playlistSongs.length === 0) return;
-//     let nextIndex = index;
-
-//     if (isShuffle && playlistSongs.length > 1) {
-//       do {
-//         nextIndex = Math.floor(Math.random() * playlistSongs.length);
-//       } while (nextIndex === index);
-//     } else {
-//       nextIndex = index + 1;
-//       if (nextIndex >= playlistSongs.length) nextIndex = 0;
-//     }
-
-//     loadSong(nextIndex);
-//   };
-
-//   /* ================= CONTROLS ================= */
-//   const handlePlayPause = async () => {
-//     if (!soundRef.current || playlistSongs.length === 0) return;
-//     if (isPlaying) await soundRef.current.pauseAsync();
-//     else await soundRef.current.playAsync();
-//   };
-
-//   const handleNext = () => autoNext(currentIndex);
-
-//   const handlePrev = () => {
-//     if (playlistSongs.length === 0) return;
-//     const prevIndex =
-//       currentIndex === 0 ? playlistSongs.length - 1 : currentIndex - 1;
-//     loadSong(prevIndex);
-//   };
-
-//   const handleSeek = async (millis: number) => {
-//     if (!soundRef.current) return;
-//     await soundRef.current.setPositionAsync(millis);
-//   };
-
-//   /* ================= PRELOAD DURATIONS ================= */
-//   useEffect(() => {
-//     if (playlistSongs.length === 0) {
-//       setSongDurations([]);
-//       return;
-//     }
-
-//     const preloadDurations = async () => {
-//       const durations: number[] = [];
-//       for (const song of playlistSongs) {
-//         const { sound, status } = await Audio.Sound.createAsync(song.file);
-//         durations.push(status.isLoaded ? (status.durationMillis ?? 0) : 0);
-//         await sound.unloadAsync();
-//       }
-//       setSongDurations(durations);
-//     };
-
-//     preloadDurations();
-//     loadSong(0, false);
-
-//     return () => {
-//       if (soundRef.current) soundRef.current.unloadAsync();
-//     };
-//   }, [playlistSongs]);
-
-//   /* ================= DELETE ================= */
-//   const handleDelete = (id: string) => {
-//     const updated = playlistSongs.filter((s) => s.id !== id);
-//     setPlaylistSongs(updated);
-
-//     if (currentIndex >= updated.length) setCurrentIndex(0);
-//   };
-
-//   /* ================= UI ================= */
-//   return (
-//     <ImageBackground
-//       source={Images.MusicBg}
-//       className="flex-1"
-//       resizeMode="cover"
-//     >
-//       <AppHeader />
-
-//       <View className="flex-row items-center justify-between px-6 mt-7 mb-2">
-//         <TouchableOpacity onPress={() => router.back()}>
-//           <ChevronLeft size={28} color="#ffffff" />
-//         </TouchableOpacity>
-
-//         <Text className="text-4xl font-bold text-[#FDE6B1] text-center flex-1">
-//           {folderTitle}
-//         </Text>
-
-//         <View>
-//           {!isEditing ? (
-//             <TouchableOpacity
-//               className="mr-[2%]"
-//               onPress={() => setIsEditing(true)}
-//             >
-//               <Pencil size={28} color="white" />
-//             </TouchableOpacity>
-//           ) : (
-//             <TouchableOpacity
-//               className="mr-[2%]"
-//               onPress={() => setIsEditing(false)}
-//             >
-//               <Check size={28} color="#06402B" />
-//             </TouchableOpacity>
-//           )}
-//         </View>
-//       </View>
-
-//       <View className="mx-6 mt-6" style={{ height: "75%" }}>
-//         <PlayerCard
-//           image={Images.MusicClassical}
-//           folderTitle={folderTitle}
-//           totalSongs={playlistSongs.length}
-//           totalDuration={formattedTotalDuration}
-//           currentTitle={
-//             playlistSongs.length === 0
-//               ? "No songs yet"
-//               : playlistSongs[currentIndex]?.title
-//           }
-//           duration={duration}
-//           position={position}
-//           isPlaying={isPlaying}
-//           onPlayPause={handlePlayPause}
-//           onNext={handleNext}
-//           onPrev={handlePrev}
-//           isShuffle={isShuffle}
-//           isRepeat={isRepeat}
-//           onSeek={handleSeek}
-//           onToggleShuffle={() => setIsShuffle(!isShuffle)}
-//           onToggleRepeat={() => setIsRepeat(!isRepeat)}
-//           onAddSong={() => setIsAddModalVisible(true)}
-//         />
-
-//         <SongList
-//           songs={playlistSongs.map((s, i) => ({
-//             ...s,
-//             duration: songDurations[i],
-//           }))}
-//           currentId={playlistSongs[currentIndex]?.id || ""}
-//           isEditing={isEditing}
-//           onSelect={(id) => {
-//             if (isEditing) return;
-//             const index = playlistSongs.findIndex((s) => s.id === id);
-//             if (index !== -1) loadSong(index);
-//           }}
-//           onDelete={handleDelete}
-//         />
-//       </View>
-
-//       <Modal transparent visible={isAddModalVisible} animationType="fade">
-//         <View className="flex-1 justify-center items-center bg-black/40">
-//           <View
-//             style={{
-//               width: 300,
-//               backgroundColor: "#EED9B6",
-//               borderRadius: 20,
-//               padding: 20,
-//               borderWidth: 2,
-//               borderColor: "black",
-//             }}
-//           >
-//             <Text className="text-black font-bold mb-2">Song Title</Text>
-
-//             <TextInput
-//               value={newSongTitle}
-//               onChangeText={setNewSongTitle}
-//               placeholder="Enter song title"
-//               style={{
-//                 backgroundColor: "#E5E5E5",
-//                 borderRadius: 15,
-//                 padding: 10,
-//                 borderWidth: 2,
-//                 borderColor: "black",
-//                 marginBottom: 15,
-//               }}
-//             />
-
-//             <TouchableOpacity
-//               onPress={handleImportMusic}
-//               style={{ marginBottom: 20 }}
-//             >
-//               <Text style={{ fontWeight: "600" }}>
-//                 + Import Music {newSongFile ? "| File Uploaded!" : ""}
-//               </Text>
-//             </TouchableOpacity>
-
-//             <View className="flex-row justify-between">
-//               <TouchableOpacity
-//                 onPress={handleAddSong}
-//                 style={{
-//                   backgroundColor: "#6FCF97",
-//                   paddingVertical: 8,
-//                   paddingHorizontal: 20,
-//                   borderRadius: 15,
-//                   borderWidth: 2,
-//                   borderColor: "black",
-//                 }}
-//               >
-//                 <Text style={{ fontWeight: "bold" }}>+ Add</Text>
-//               </TouchableOpacity>
-
-//               <TouchableOpacity
-//                 onPress={() => setIsAddModalVisible(false)}
-//                 style={{
-//                   backgroundColor: "#EB5757",
-//                   paddingVertical: 8,
-//                   paddingHorizontal: 20,
-//                   borderRadius: 15,
-//                   borderWidth: 2,
-//                   borderColor: "black",
-//                 }}
-//               >
-//                 <Text style={{ fontWeight: "bold", color: "white" }}>
-//                   Cancel
-//                 </Text>
-//               </TouchableOpacity>
-//             </View>
-//           </View>
-//         </View>
-//       </Modal>
-//     </ImageBackground>
-//   );
-// }
+const styles = StyleSheet.create({
+  gradientContainer: {
+    flex: 1,
+  },
+  headerContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 24,
+    marginBottom: 32,
+    paddingVertical: 12,
+  },
+  headerTitle: {
+    flex: 1,
+    textAlign: "center",
+    fontSize: 24,
+    fontWeight: "900",
+    color: "#334155",
+  },
+  checkIconWrapper: {
+    backgroundColor: "white",
+    padding: 8,
+    borderRadius: 9999,
+  },
+  mainContentContainer: {
+    flex: 1,
+    paddingHorizontal: 24,
+    paddingBottom: 80,
+  },
+  iconBtn: {
+    padding: 8,
+    backgroundColor: "white",
+    borderRadius: 12,
+    elevation: 2,
+  },
+  actionButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(51, 65, 85, 0.2)",
+    paddingVertical: 16,
+    borderRadius: 16,
+    marginBottom: 20,
+    borderWidth: 2,
+    borderColor: "white",
+  },
+  actionButtonText: {
+    color: "#ffffff",
+    fontWeight: "bold",
+    fontSize: 16,
+    marginLeft: 10,
+  },
+  miniPlayer: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 70,
+    backgroundColor: "#ffffff",
+    borderTopWidth: 1,
+    borderColor: "#e2e8f0",
+    paddingHorizontal: 20,
+    justifyContent: "center",
+    elevation: 10,
+  },
+  miniPlayerContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  miniPlayerTitle: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#334155",
+    marginRight: 15,
+  },
+  miniPlayerControls: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  icon: {
+    padding: 8,
+  },
+});

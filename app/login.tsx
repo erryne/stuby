@@ -1,42 +1,98 @@
-import CustomButton from "@/components/CustomButton";
-import CustomTextInput from "@/components/CustomTextInput";
+import { LinearGradient } from "expo-linear-gradient";
 import { Link, useRouter } from "expo-router";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import React, { useState } from "react";
+import LottieView from "lottie-react-native";
+import React, { useEffect, useRef, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Dimensions,
-    ImageBackground,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    Text,
-    TouchableOpacity,
-    View,
+  Animated,
+  Keyboard,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  useWindowDimensions,
 } from "react-native";
 import { auth } from "../firebaseConfig";
 
-const { width } = Dimensions.get("window");
+// Siguraduhin na ang path ay tama base sa kung nasaan ang file mo
+import { CustomAlert } from "@/components/CustomAlert";
+import CustomGlowInput from "@/components/CustomGlowInput";
+import CustomSpringButton from "@/components/CustomSpringButton";
+import GeometricBackground from "@/components/GeometricBackground";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+
+  // States para sa CustomAlert
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertData, setAlertData] = useState({ title: "", message: "" });
+
+  const { width, height } = useWindowDimensions();
   const router = useRouter();
+
+  const slideAnim = useRef(new Animated.Value(0)).current;
+  const keyboardShift = useRef(new Animated.Value(0)).current;
+
+  const showAlert = (title: string, message: string) => {
+    setAlertData({ title, message });
+    setAlertVisible(true);
+  };
+
+  useEffect(() => {
+    Animated.spring(slideAnim, {
+      toValue: 1,
+      tension: 45,
+      friction: 9,
+      useNativeDriver: true,
+    }).start();
+
+    const showEvent =
+      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent =
+      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+
+    const showListener = Keyboard.addListener(showEvent, (event) => {
+      Animated.timing(keyboardShift, {
+        toValue: -event.endCoordinates.height * 0.55,
+        duration: Platform.OS === "ios" ? event.duration : 250,
+        useNativeDriver: true,
+      }).start();
+    });
+
+    const hideListener = Keyboard.addListener(hideEvent, () => {
+      Animated.timing(keyboardShift, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+    });
+
+    return () => {
+      showListener.remove();
+      hideListener.remove();
+    };
+  }, []);
+
+  const cardTranslateY = slideAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [height * 0.45, 0],
+  });
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert("Error", "Please enter both email and password.");
+      showAlert("Error", "Please enter both email and password.");
       return;
     }
 
     setIsLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email.trim(), password);
-      router.replace("/");
     } catch (error: any) {
-      let errorMessage = "An unknown error occurred.";
+      let errorMessage = "Please enter a valid email address or password.";
       if (
         error.code === "auth/user-not-found" ||
         error.code === "auth/wrong-password"
@@ -45,124 +101,147 @@ export default function Login() {
       } else if (error.code === "auth/invalid-email") {
         errorMessage = "Please enter a valid email address.";
       }
-      Alert.alert("Login Failed", errorMessage);
+      showAlert("Login Failed", errorMessage);
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <ImageBackground
-      source={require("../assets/images/bglogin.png")}
-      style={{ flex: 1 }}
-      resizeMode="cover"
+    <LinearGradient
+      colors={["#7DD3FC", "#38BDF8", "#0EA5E9"]}
+      style={StyleSheet.absoluteFill}
     >
-      {/* KeyboardAvoidingView prevents the keyboard from hiding the inputs */}
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={{ flex: 1 }}
+      <View style={StyleSheet.absoluteFillObject}>
+        <GeometricBackground />
+      </View>
+
+      <Animated.View
+        style={[{ flex: 1 }, { transform: [{ translateY: keyboardShift }] }]}
       >
-        <ScrollView
-          contentContainerStyle={{ flexGrow: 1 }}
-          bounces={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          <View
-            style={{
-              flex: 1,
-              paddingHorizontal: "8%",
-              justifyContent: "center", // Centers the content vertically
-            }}
-          >
-            {/* Header */}
-            <View style={{ marginBottom: 40, marginTop: 60 }}>
-              <Text
-                style={{
-                  fontSize: width < 380 ? 54 : 68,
-                  fontWeight: "900",
-                  color: "#FFEF9A",
-                  textShadowColor: "#000",
-                  textShadowOffset: { width: 4, height: 4 },
-                  textShadowRadius: 1,
-                  letterSpacing: 1,
-                }}
-              >
-                LOGIN
-              </Text>
-
-              <Text
-                style={{
-                  marginTop: 4,
-                  fontSize: 18,
-                  color: "#553A00",
-                  fontWeight: "700",
-                  textShadowColor: "rgba(0,0,0,0.25)",
-                  textShadowOffset: { width: 0, height: 2 },
-                  textShadowRadius: 4,
-                }}
-              >
-                Excited to see you again, buddy!
-              </Text>
-            </View>
-
-            {/* Form Section */}
-            <View className="items-center">
-              <CustomTextInput
-                placeholder="Email"
-                textContentType="username"
-                iconName="user"
-                value={email}
-                onChangeText={setEmail}
-                autoCapitalize="none"
-                keyboardType="email-address"
-                editable={!isLoading}
-              />
-
-              <CustomTextInput
-                placeholder="Password"
-                secureTextEntry
-                iconName="lock"
-                value={password}
-                onChangeText={setPassword}
-                editable={!isLoading}
-              />
-
-              <TouchableOpacity className="self-end mt-2 mb-8">
-                <Text className="text-white font-bold text-base">
-                  Forgot Password?
-                </Text>
-              </TouchableOpacity>
-
-              <View style={{ width: "100%" }}>
-                {isLoading ? (
-                  <ActivityIndicator size="large" color="#FFEF9A" />
-                ) : (
-                  <CustomButton title="Login" onPress={handleLogin} />
-                )}
-              </View>
-            </View>
-
-            {/* Footer */}
-            <View className="flex-row justify-center mt-10 mb-10">
-              <Link href="/register" asChild>
-                <TouchableOpacity>
-                  <Text style={{ color: "white", fontSize: 16 }}>
-                    Don't have an account?{" "}
-                    <Text
-                      style={{
-                        fontWeight: "bold",
-                        textDecorationLine: "underline",
-                      }}
-                    >
-                      Register
-                    </Text>
-                  </Text>
-                </TouchableOpacity>
-              </Link>
-            </View>
+        <View style={{ flex: 1 }}>
+          <View style={styles.animationContainer}>
+            <LottieView
+              source={require("../assets/animations/Stuby.json")}
+              autoPlay
+              loop
+              style={{ flex: 1, width: "100%" }}
+              resizeMode="contain"
+            />
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </ImageBackground>
+
+          <Animated.View
+            style={[
+              styles.card,
+              { transform: [{ translateY: cardTranslateY }] },
+            ]}
+          >
+            <ScrollView
+              style={{ width: "100%" }}
+              contentContainerStyle={styles.scrollContent}
+              keyboardShouldPersistTaps="handled"
+            >
+              <View style={{ marginBottom: 24, alignItems: "center" }}>
+                <Text
+                  style={[styles.title, { fontSize: width < 380 ? 46 : 56 }]}
+                >
+                  LOGIN
+                </Text>
+                <Text style={styles.subtitle}>
+                  Excited to see you again, buddy!
+                </Text>
+              </View>
+
+              <View style={styles.inputContainer}>
+                <CustomGlowInput
+                  placeholder="Email"
+                  iconName="user"
+                  value={email}
+                  onChangeText={setEmail}
+                  autoCapitalize="none"
+                  keyboardType="email-address"
+                />
+                <CustomGlowInput
+                  placeholder="Password"
+                  iconName="lock"
+                  isPassword={true}
+                  value={password}
+                  onChangeText={setPassword}
+                />
+
+                <TouchableOpacity
+                  style={styles.forgotBtn}
+                  onPress={() => router.push("/forgetpass")}
+                >
+                  <Text style={styles.forgotText}>Forgot Password?</Text>
+                </TouchableOpacity>
+
+                <CustomSpringButton
+                  title="Login"
+                  onPress={handleLogin}
+                  isLoading={isLoading}
+                />
+
+                <View style={styles.registerContainer}>
+                  <Link href="/register" asChild>
+                    <TouchableOpacity>
+                      <Text style={styles.registerText}>
+                        Don't have an account?{" "}
+                        <Text style={styles.registerLink}>Register</Text>
+                      </Text>
+                    </TouchableOpacity>
+                  </Link>
+                </View>
+              </View>
+            </ScrollView>
+          </Animated.View>
+        </View>
+      </Animated.View>
+
+      <CustomAlert
+        visible={alertVisible}
+        title={alertData.title}
+        message={alertData.message}
+        onClose={() => setAlertVisible(false)}
+      />
+    </LinearGradient>
   );
 }
+
+const styles = StyleSheet.create({
+  animationContainer: {
+    height: 200,
+    marginTop: 40,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  card: {
+    flex: 1,
+    backgroundColor: "white",
+    borderTopLeftRadius: 40,
+    borderTopRightRadius: 40,
+    marginTop: 20,
+  },
+  scrollContent: { flexGrow: 1, paddingTop: 32, paddingBottom: 40 },
+  inputContainer: {
+    width: "100%",
+    alignItems: "center",
+    paddingHorizontal: "8%",
+  },
+  title: { fontWeight: "900", color: "#334155", letterSpacing: 2 },
+  subtitle: {
+    marginTop: 4,
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#64748B",
+  },
+  forgotBtn: { alignSelf: "flex-end", marginTop: 4, marginBottom: 24 },
+  forgotText: { color: "#0EA5E9", fontWeight: "bold", fontSize: 16 },
+  registerContainer: { marginTop: 24, alignItems: "center" },
+  registerText: { color: "#64748B", fontSize: 16 },
+  registerLink: {
+    fontWeight: "bold",
+    textDecorationLine: "underline",
+    color: "#0EA5E9",
+  },
+});

@@ -1,28 +1,32 @@
-import CustomButton from "@/components/CustomButton";
-import CustomTextInput from "@/components/CustomTextInput";
 import emailjs from "@emailjs/react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { collection, getDocs, query, where } from "firebase/firestore";
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Dimensions,
-    ImageBackground,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Animated,
+  Dimensions,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View,
 } from "react-native";
 import { db } from "../firebaseConfig";
 
-// Initialize EmailJS
+// Components
+import { CustomAlert } from "@/components/CustomAlert";
+import CustomGlowInput from "@/components/CustomGlowInput";
+import CustomSpringButton from "@/components/CustomSpringButton";
+import GeometricBackground from "@/components/GeometricBackground";
+
 emailjs.init({ publicKey: "bYzbLSbuDg4fOHWFK" });
 
-const { height } = Dimensions.get("window");
+const { width, height } = Dimensions.get("window");
+const isSmallDevice = width < 380;
 
 export default function Register() {
   const [firstName, setFirstName] = useState("");
@@ -32,7 +36,31 @@ export default function Register() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
+  // Alert State
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertConfig, setAlertConfig] = useState({ title: "", message: "" });
+
   const router = useRouter();
+  const slideAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.spring(slideAnim, {
+      toValue: 1,
+      tension: 45,
+      friction: 9,
+      useNativeDriver: true,
+    }).start();
+  }, []);
+
+  const cardTranslateY = slideAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [height * 0.45, 0],
+  });
+
+  const showAlert = (title: string, message: string) => {
+    setAlertConfig({ title, message });
+    setAlertVisible(true);
+  };
 
   const checkIfEmailExists = async (userEmail: string) => {
     try {
@@ -43,20 +71,33 @@ export default function Register() {
       );
       const querySnapshot = await getDocs(q);
       return !querySnapshot.empty;
-    } catch (error) {
-      console.error("Firestore Check Error:", error);
-      throw new Error("Could not verify email status.");
+    } catch (error: any) {
+      if (error.code === "permission-denied") return false;
+      return false;
     }
   };
 
+  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$/;
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
   const handleGoToVerification = async () => {
     if (!firstName || !lastName || !email || !password || !confirmPassword) {
-      Alert.alert("Error", "Please fill in all fields.");
+      showAlert("Error", "Please fill in all fields.");
       return;
     }
-
     if (password !== confirmPassword) {
-      Alert.alert("Error", "Passwords do not match.");
+      showAlert("Error", "Passwords do not match.");
+      return;
+    }
+    if (!passwordRegex.test(password)) {
+      showAlert(
+        "Invalid Password",
+        "Password must be at least 8 characters long and includes uppercase, lowercase, number, and special character.",
+      );
+      return;
+    }
+    if (!emailRegex.test(email)) {
+      showAlert("Invalid Email", "Please enter a valid email address.");
       return;
     }
 
@@ -65,7 +106,7 @@ export default function Register() {
     try {
       const exists = await checkIfEmailExists(email);
       if (exists) {
-        Alert.alert(
+        showAlert(
           "Account Exists",
           "This email is already registered. Please login instead.",
         );
@@ -94,7 +135,7 @@ export default function Register() {
         },
       });
     } catch (error: any) {
-      Alert.alert(
+      showAlert(
         "Error",
         error.message || "Something went wrong. Please check your connection.",
       );
@@ -104,135 +145,121 @@ export default function Register() {
   };
 
   return (
-    <ImageBackground
-      source={require("../assets/images/bglogin.png")}
-      resizeMode="cover"
-      style={styles.background}
+    <LinearGradient
+      colors={["#7DD3FC", "#38BDF8", "#0EA5E9"]}
+      style={{ flex: 1 }}
     >
+      <GeometricBackground />
+
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={{ flex: 1, width: "100%" }}
+        style={{ flex: 1 }}
       >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={styles.innerContainer}>
-            {/* Title Section */}
-            <View style={styles.titleContainer}>
-              <Text style={styles.registerText}>REGISTER</Text>
-              <Text style={styles.subtitleText}>
-                Time to get inky — it’s time to study!
-              </Text>
-            </View>
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View className="flex-1 justify-end">
+            <Animated.View
+              className="bg-white rounded-t-[40px] px-[8%] pt-8"
+              style={{
+                height: "85%",
+                shadowColor: "#334155",
+                shadowOffset: { width: 0, height: -14 },
+                shadowOpacity: 0.12,
+                shadowRadius: 24,
+                elevation: 20,
+                transform: [{ translateY: cardTranslateY }],
+              }}
+            >
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+                contentContainerStyle={{ flexGrow: 1, paddingBottom: 40 }}
+              >
+                <View className="mb-6 justify-center items-center">
+                  <Text
+                    className="font-black text-[#334155] tracking-wider"
+                    style={{ fontSize: isSmallDevice ? 40 : 50 }}
+                  >
+                    REGISTER
+                  </Text>
+                  <Text className="mt-1 text-base font-bold text-[#64748B] text-center">
+                    Time to get inky — it's time to study!
+                  </Text>
+                </View>
 
-            {/* Input Section */}
-            <View className="gap-0">
-              <CustomTextInput
-                placeholder="First Name"
-                iconName="user"
-                value={firstName}
-                onChangeText={setFirstName}
-                editable={!isLoading}
-              />
-              <CustomTextInput
-                placeholder="Last Name"
-                iconName="user"
-                value={lastName}
-                onChangeText={setLastName}
-                editable={!isLoading}
-              />
-              <CustomTextInput
-                placeholder="Email"
-                iconName="mail"
-                value={email}
-                keyboardType="email-address"
-                onChangeText={setEmail}
-                editable={!isLoading}
-                autoCapitalize="none"
-              />
-              <CustomTextInput
-                placeholder="Password"
-                iconName="lock"
-                value={password}
-                onChangeText={setPassword}
-                editable={!isLoading}
-                autoCapitalize="none"
-                secureTextEntry
-              />
-              <CustomTextInput
-                placeholder="Confirm Password"
-                iconName="lock"
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                editable={!isLoading}
-                autoCapitalize="none"
-                secureTextEntry
-              />
-            </View>
+                <View className="gap-3">
+                  <CustomGlowInput
+                    placeholder="First Name"
+                    iconName="user"
+                    value={firstName}
+                    onChangeText={setFirstName}
+                    editable={!isLoading}
+                  />
+                  <CustomGlowInput
+                    placeholder="Last Name"
+                    iconName="user"
+                    value={lastName}
+                    onChangeText={setLastName}
+                    editable={!isLoading}
+                  />
+                  <CustomGlowInput
+                    placeholder="Email"
+                    iconName="mail"
+                    value={email}
+                    keyboardType="email-address"
+                    onChangeText={setEmail}
+                    editable={!isLoading}
+                    autoCapitalize="none"
+                  />
+                  <CustomGlowInput
+                    placeholder="Password"
+                    iconName="lock"
+                    isPassword={true}
+                    value={password}
+                    onChangeText={setPassword}
+                    editable={!isLoading}
+                    autoCapitalize="none"
+                  />
+                  <CustomGlowInput
+                    placeholder="Confirm Password"
+                    iconName="lock"
+                    isPassword={true}
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
+                    editable={!isLoading}
+                    autoCapitalize="none"
+                  />
+                </View>
 
-            <View style={{ height: 20 }} />
-
-            {/* Action Section */}
-            <View>
-              {isLoading ? (
-                <ActivityIndicator size="large" color="#FFEF9A" />
-              ) : (
-                <CustomButton
-                  title="Continue to Verification"
-                  onPress={handleGoToVerification}
-                />
-              )}
-
-              <View className="flex-row justify-center mt-4">
-                <Text className="text-white">Already a buddy? </Text>
-                <TouchableOpacity onPress={() => router.push("/login")}>
-                  <Text className="text-white font-bold">Sign In</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
+                <View className="mt-6">
+                  <CustomSpringButton
+                    title="Continue to Verification"
+                    onPress={handleGoToVerification}
+                    isLoading={isLoading}
+                  />
+                  <TouchableOpacity
+                    onPress={() => router.push("/login")}
+                    className="mt-6 items-center"
+                  >
+                    <Text className="text-slate-500 text-[15px] font-medium">
+                      Already a buddy?{" "}
+                      <Text className="font-extrabold underline text-[#0EA5E9]">
+                        Sign In
+                      </Text>
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </ScrollView>
+            </Animated.View>
           </View>
-        </ScrollView>
+        </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
-    </ImageBackground>
+
+      <CustomAlert
+        visible={alertVisible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        onClose={() => setAlertVisible(false)}
+      />
+    </LinearGradient>
   );
 }
-
-const styles = StyleSheet.create({
-  background: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: "center", // Centering vertically
-    alignItems: "center", // Centering horizontally
-  },
-  innerContainer: {
-    width: "100%",
-    paddingHorizontal: "8%",
-  },
-  titleContainer: {
-    marginBottom: 40,
-    alignItems: "center",
-  },
-  registerText: {
-    fontSize: 60,
-    fontWeight: "900",
-    color: "#FFEF9A",
-    textShadowColor: "#000000",
-    textShadowOffset: { width: 4, height: 4 },
-    textShadowRadius: 1,
-    letterSpacing: 1,
-    textAlign: "center",
-  },
-  subtitleText: {
-    color: "#553A00",
-    fontSize: 17,
-    fontFamily: "Poppins-Bold",
-    fontWeight: "700",
-    textAlign: "center",
-    textShadowColor: "rgba(0, 0, 0, 0.25)",
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
-  },
-});

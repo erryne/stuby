@@ -1,50 +1,51 @@
 import React from "react";
-import { Text, TextStyle, TouchableOpacity, Dimensions, Platform, ViewStyle } from "react-native";
+import {
+  Platform,
+  Text,
+  TextStyle,
+  TouchableOpacity,
+  ViewStyle,
+} from "react-native";
 
 interface GreenButtonProps {
   title: string;
   onPress: () => void;
-  backgroundColor?: string; // Tailwind class or hex
-  textColor?: string; // Tailwind class
-  widthPercent?: number; // percentage of screen width
-  heightPercent?: number; // percentage of screen height
+  backgroundColor?: string;
+  textColor?: string;
+  width?: number;
+  height?: number;
   borderRadius?: number;
   fontSize?: number;
   fontWeight?: TextStyle["fontWeight"];
-  containerStyle?: string; // extra Tailwind classes
+  containerStyle?: string;
   textStyle?: string;
 }
-
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 const GreenButton: React.FC<GreenButtonProps> = ({
   title,
   onPress,
   backgroundColor = "#80CF8F",
-  textColor = "text-black",
-  widthPercent = 0.01, 
-  heightPercent = 0.06, // 6% of screen height
+  textColor = "#000000",
+  width = 76,
+  height = 33,
   borderRadius = 20,
-  fontSize = 15,
+  fontSize = 12,
   fontWeight = "700",
   containerStyle,
   textStyle,
 }) => {
-  const isHex = backgroundColor.startsWith("#");
+  const isHexBg = backgroundColor.startsWith("#");
+  const isHexText = textColor.startsWith("#");
 
-  const buttonWidth = SCREEN_WIDTH * widthPercent;
-  const buttonHeight = SCREEN_HEIGHT * heightPercent;
-
-  // Shadow style
   const shadowStyle: ViewStyle = Platform.select({
     ios: {
       shadowColor: "#000",
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.3,
-      shadowRadius: 4,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 2,
     },
     android: {
-      elevation: 5,
+      elevation: 2,
     },
   }) as ViewStyle;
 
@@ -52,20 +53,28 @@ const GreenButton: React.FC<GreenButtonProps> = ({
     <TouchableOpacity
       onPress={onPress}
       activeOpacity={0.8}
-      className={`${!isHex ? backgroundColor : ''} ${containerStyle || ''} items-center justify-center`}
+      // "items-center" and "justify-center" handle the vertical and horizontal centering
+      className={`${!isHexBg ? backgroundColor : ""} ${containerStyle || ""} items-center justify-center`}
       style={{
-        width: buttonWidth,
-        height: buttonHeight,
-        borderRadius,
-        backgroundColor: isHex ? backgroundColor : undefined,
+        width: width,
+        height: height,
+        borderRadius: borderRadius,
+        backgroundColor: isHexBg ? backgroundColor : undefined,
+        display: "flex",
+        alignItems: "center", // Center horizontal
+        justifyContent: "center", // Center vertical
         ...shadowStyle,
       }}
     >
       <Text
-        className={`${textColor} ${textStyle}`}
+        className={`${!isHexText ? textColor : ""} ${textStyle || ""}`}
         style={{
           fontSize,
           fontWeight,
+          color: isHexText ? textColor : undefined,
+          textAlign: "center", // Horizontal text alignment
+          textAlignVertical: "center", // Vertical text alignment (Android specific)
+          includeFontPadding: false, // CRITICAL: Removes extra top space on Android
         }}
       >
         {title}

@@ -1,22 +1,12 @@
-import { useRouter } from "expo-router";
+import AddFloatingButton from "@/components/AddFloatingButton";
+import CustomHeader from "@/components/CustomHeader";
+import GeometricBackground from "@/components/GeometricBackground";
+import ProgressTrack from "@/components/ProgressTrack";
+import TaskItem from "@/components/TaskItem";
+import TaskModal from "@/components/TaskModal";
+import TitleHeader from "@/components/TitleHeader";
+import { LinearGradient } from "expo-linear-gradient";
 import { StatusBar } from "expo-status-bar";
-import { Check, SquarePen, Trash2 } from "lucide-react-native";
-import React, { useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  ImageBackground,
-  KeyboardAvoidingView,
-  Platform,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
-
-// FIREBASE IMPORTS
-import { signOut } from "firebase/auth";
 import {
   addDoc,
   collection,
@@ -29,247 +19,280 @@ import {
   updateDoc,
   where,
 } from "firebase/firestore";
+import LottieView from "lottie-react-native";
+import { SquarePen } from "lucide-react-native";
+import React, { useEffect, useRef, useState } from "react";
+import {
+  FlatList,
+  Modal,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  useWindowDimensions,
+  Vibration,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { auth, db } from "../../firebaseConfig";
 
-import AddFloatingButton from "@/components/AddFloatingButton";
-import GreenButton from "@/components/GreenButton";
-
-interface Todo {
+interface TodoTask {
   id: string;
   task: string;
   done: boolean;
-  userId: string;
+  emoji?: string;
 }
 
-const pastelColors = [
-  "#FFB3BA",
-  "#FFDFBA",
-  "#FFFFBA",
-  "#BAFFC9",
-  "#BAE1FF",
-  "#E0BAFF",
-];
-
 export default function TodolistScreen() {
-  const router = useRouter();
-  const [todos, setTodos] = useState<Todo[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { height } = useWindowDimensions();
+  const [todos, setTodos] = useState<TodoTask[]>([]);
   const [isEditingMode, setIsEditingMode] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [isAddModalVisible, setIsAddModalVisible] = useState(false);
+  const [isCongratModalVisible, setIsCongratModalVisible] = useState(false);
 
-  const user = auth.currentUser;
+  const [newTaskText, setNewTaskText] = useState("");
+  const [selectedEmoji, setSelectedEmoji] = useState("chem");
+  const [editingTask, setEditingTask] = useState<TodoTask | null>(null);
 
-  // 1. FETCH DATA
+  const hasShownRef = useRef(false);
+  const isInitialLoad = useRef(true);
+
   useEffect(() => {
-    if (!user) {
-      router.replace("/");
-      return;
-    }
-
     const q = query(
       collection(db, "tasks"),
-      where("userId", "==", user.uid),
+      where("userId", "==", auth.currentUser?.uid),
       orderBy("createdAt", "desc"),
     );
 
-    const unsubscribe = onSnapshot(
-      q,
-      { includeMetadataChanges: true }, // Helps handle local vs server state transitions
-      (snapshot) => {
-        const items = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...(doc.data() as Omit<Todo, "id">),
-        }));
-        setTodos(items);
-        setLoading(false);
-      },
-      (error) => {
-        console.error("Firestore Error:", error);
-        setLoading(false);
-      },
-    );
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const data: TodoTask[] = snapshot.docs.map((d) => ({
+        id: d.id,
+        ...(d.data() as Omit<TodoTask, "id">),
+      }));
+      setTodos(data);
+
+      const isAllDone = data.length > 0 && data.every((t) => t.done);
+
+      if (isInitialLoad.current) {
+        isInitialLoad.current = false;
+        hasShownRef.current = isAllDone;
+        return;
+      }
+
+      // Safety check: Dagdag na "&& !isCongratModalVisible" para iwas double pop-up
+      if (isAllDone && !isCongratModalVisible) {
+        if (!hasShownRef.current) {
+          Vibration.vibrate([0, 200, 100, 200]);
+          setIsCongratModalVisible(true);
+          hasShownRef.current = true;
+        }
+      } else if (!isAllDone) {
+        hasShownRef.current = false;
+        setIsCongratModalVisible(false);
+      }
+    });
 
     return () => unsubscribe();
-  }, [user]);
+  }, [isCongratModalVisible]); // Kasama na ang isCongratModalVisible sa dependency
 
-  // 2. CREATE TASK
-  const addTodoItem = async () => {
-    if (!user) return;
+  const handleSaveTask = async (taskText: string, iconId: string) => {
+    if (taskText.trim() === "") return;
 
-    try {
-      // We create the doc first
-      const docRef = await addDoc(collection(db, "tasks"), {
-        task: "",
+    if (editingTask) {
+      await updateDoc(doc(db, "tasks", editingTask.id), {
+        task: taskText,
+        emoji: iconId,
+      });
+    } else {
+      await addDoc(collection(db, "tasks"), {
+        task: taskText,
+        emoji: iconId,
         done: false,
-        userId: user.uid,
+        userId: auth.currentUser?.uid,
         createdAt: serverTimestamp(),
       });
-
-      // Immediately set this ID as the one being edited
-      setEditingId(docRef.id);
-    } catch (error) {
-      Alert.alert("Error", "Could not create task.");
     }
-  };
-
-  // 3. UPDATE TASK TEXT
-  const updateTask = async (id: string, text: string) => {
-    try {
-      const taskRef = doc(db, "tasks", id);
-      await updateDoc(taskRef, { task: text });
-    } catch (error) {
-      console.error("Update Error:", error);
-    }
-  };
-
-  // 4. TOGGLE DONE
-  const toggleDone = async (id: string, currentStatus: boolean) => {
-    try {
-      const taskRef = doc(db, "tasks", id);
-      await updateDoc(taskRef, { done: !currentStatus });
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
-  // 5. DELETE TASK
-  const deleteTodo = async (id: string) => {
-    try {
-      await deleteDoc(doc(db, "tasks", id));
-    } catch (error) {
-      Alert.alert("Error", "Could not delete task.");
-    }
-  };
-
-  const handleLogout = () => {
-    signOut(auth).then(() => router.replace("/"));
+    setIsAddModalVisible(false);
   };
 
   return (
-    <ImageBackground
-      source={require("../../assets/images/todoBg.png")}
-      resizeMode="cover"
-      className="flex-1"
+    <LinearGradient
+      colors={["#7DD3FC", "#38BDF8", "#0EA5E9"]}
+      style={styles.flex1}
     >
-      <StatusBar style="dark" />
+      <StatusBar style="light" />
+      <View style={StyleSheet.absoluteFillObject}>
+        <GeometricBackground />
+      </View>
 
-      <View className="flex-1 px-6 pt-12">
-        {/* HEADER */}
-        <View className="flex-row justify-between items-start mb-6">
-          <View>
-            <Text className="text-white/70 text-lg font-medium tracking-widest uppercase">
-              {user?.displayName?.split(" ")[0] || "My"} Tasks
-            </Text>
-            <Text
-              className="text-[#FDE6B1] text-4xl font-black"
-              style={{
-                textShadowColor: "rgba(0, 0, 0, 0.3)",
-                textShadowOffset: { width: 1, height: 1 },
-                textShadowRadius: 4,
-              }}
-            >
-              TO-DO
-            </Text>
-          </View>
+      <SafeAreaView style={styles.flex1} edges={["top", "left", "right"]}>
+        <CustomHeader />
 
-          <View className="flex-row gap-3">
-            {!isEditingMode ? (
-              <TouchableOpacity
-                className="bg-white/20 p-3 rounded-2xl border border-white/30"
-                onPress={() => setIsEditingMode(true)}
-              >
-                <SquarePen size={24} color="white" />
-              </TouchableOpacity>
-            ) : (
-              <GreenButton
-                title="Done"
-                onPress={() => setIsEditingMode(false)}
-                widthPercent={0.2}
-                heightPercent={0.045}
-              />
-            )}
-          </View>
+        <TitleHeader
+          title="TO-DO LIST"
+          size="xl"
+          align="center"
+          color="#ffffff"
+          containerStyle={styles.titleContainer}
+          titleStyle={styles.titleText}
+        />
+
+        <View style={[styles.mascotContainer, { height: height * 0.18 }]}>
+          <LottieView
+            source={require("../../assets/animations/todo-checking.json")}
+            autoPlay
+            loop
+            style={styles.mascot}
+          />
         </View>
 
-        {/* TASK LIST */}
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-          className="flex-1"
-        >
-          {loading ? (
-            <View className="flex-1 justify-center">
-              <ActivityIndicator size="large" color="#FDE6B1" />
-            </View>
-          ) : (
-            <FlatList
-              data={todos}
-              keyExtractor={(item) => item.id}
-              contentContainerStyle={{ paddingBottom: 150 }}
-              renderItem={({ item, index }) => {
-                const pastelColor = pastelColors[index % pastelColors.length];
-                const isItemEditing = editingId === item.id;
+        <View style={styles.progressWrapper}>
+          <ProgressTrack
+            finishedCount={todos.filter((t) => t.done).length}
+            totalCount={todos.length}
+          />
+        </View>
 
-                return (
-                  <View className="flex-row items-center bg-white/95 rounded-3xl px-4 py-4 mb-3 shadow-md border border-white/50">
-                    <TouchableOpacity
-                      onPress={() => toggleDone(item.id, item.done)}
-                      className="w-7 h-7 rounded-full border-2 items-center justify-center mr-4"
-                      style={{
-                        borderColor: item.done ? pastelColor : "#D1D5DB",
-                        backgroundColor: item.done
-                          ? pastelColor
-                          : "transparent",
-                      }}
-                    >
-                      {item.done && (
-                        <Check size={16} color="white" strokeWidth={3} />
-                      )}
-                    </TouchableOpacity>
+        <View style={styles.tasksHeader}>
+          <Text style={styles.tasksTitle}>Tasks</Text>
+          <TouchableOpacity
+            onPress={() => setIsEditingMode(!isEditingMode)}
+            style={styles.editBtn}
+          >
+            <SquarePen size={20} color="white" />
+          </TouchableOpacity>
+        </View>
 
-                    <View className="flex-1">
-                      {isItemEditing ? (
-                        <TextInput
-                          value={item.task}
-                          autoFocus
-                          placeholder="Type your task..."
-                          placeholderTextColor="#9CA3AF"
-                          onChangeText={(text) => updateTask(item.id, text)}
-                          onBlur={() => setEditingId(null)}
-                          onSubmitEditing={() => setEditingId(null)}
-                          className="text-gray-800 text-base font-semibold py-1"
-                        />
-                      ) : (
-                        <TouchableOpacity onPress={() => setEditingId(item.id)}>
-                          <Text
-                            className={`text-base font-semibold ${
-                              item.done
-                                ? "line-through text-gray-400"
-                                : "text-gray-700"
-                            }`}
-                          >
-                            {item.task || "New Task"}
-                          </Text>
-                        </TouchableOpacity>
-                      )}
-                    </View>
-
-                    {isEditingMode && (
-                      <TouchableOpacity
-                        onPress={() => deleteTodo(item.id)}
-                        className="bg-red-50 p-2 rounded-xl"
-                      >
-                        <Trash2 size={20} color="#EF4444" />
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                );
+        <FlatList
+          data={todos}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContent}
+          renderItem={({ item }) => (
+            <TaskItem
+              item={item}
+              isEditingMode={isEditingMode}
+              onToggle={async (id, done) =>
+                await updateDoc(doc(db, "tasks", id), { done: !done })
+              }
+              onDelete={async (id) => await deleteDoc(doc(db, "tasks", id))}
+              onEdit={(task) => {
+                setEditingTask(task);
+                setNewTaskText(task.task);
+                setSelectedEmoji(task.emoji || "chem");
+                setIsAddModalVisible(true);
               }}
             />
           )}
-        </KeyboardAvoidingView>
-      </View>
+        />
+      </SafeAreaView>
 
-      <AddFloatingButton onPress={addTodoItem} />
-    </ImageBackground>
+      <Modal
+        visible={isCongratModalVisible}
+        transparent={true}
+        animationType="fade"
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <LottieView
+              source={require("../../assets/animations/star.json")}
+              autoPlay
+              loop={false}
+              style={styles.mascot}
+            />
+            <Text style={styles.modalTitle}>Great Job!</Text>
+            <Text style={styles.modalSub}>
+              You've cleared your task list for today!
+            </Text>
+            <TouchableOpacity
+              onPress={() => setIsCongratModalVisible(false)}
+              style={styles.btnCelebrate}
+            >
+              <Text style={styles.btnText}>Celebrate!</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <TaskModal
+        isVisible={isAddModalVisible}
+        onClose={() => setIsAddModalVisible(false)}
+        onSave={handleSaveTask}
+        editingTask={editingTask}
+        taskText={newTaskText}
+        setTaskText={setNewTaskText}
+        selectedEmoji={selectedEmoji}
+        setSelectedEmoji={setSelectedEmoji}
+      />
+
+      <AddFloatingButton
+        onPress={() => {
+          setEditingTask(null);
+          setNewTaskText("");
+          setSelectedEmoji("chem");
+          setIsAddModalVisible(true);
+        }}
+      />
+    </LinearGradient>
   );
 }
+
+const styles = StyleSheet.create({
+  flex1: { flex: 1 },
+  titleContainer: { marginBottom: 10 },
+  titleText: {
+    textShadowColor: "rgba(0, 0, 0, 0.8)",
+    textShadowOffset: { width: 2, height: 2 },
+    textShadowRadius: 4,
+  },
+  mascotContainer: { justifyContent: "center", alignItems: "center" },
+  mascot: { width: 250, height: 250 },
+  progressWrapper: { marginHorizontal: 20, marginBottom: 16 },
+  tasksHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 24,
+    marginBottom: 10,
+  },
+  tasksTitle: { color: "white", fontSize: 28, fontWeight: "900" },
+  editBtn: {
+    backgroundColor: "rgba(255,255,255,0.2)",
+    padding: 12,
+    borderRadius: 16,
+  },
+  listContent: { paddingBottom: 120, paddingHorizontal: 12 },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.4)",
+    paddingHorizontal: 24,
+  },
+  modalContent: {
+    backgroundColor: "white",
+    padding: 32,
+    borderRadius: 24,
+    alignItems: "center",
+    width: "100%",
+  },
+  modalTitle: {
+    fontSize: 28,
+    fontWeight: "900",
+    color: "#334155",
+    marginTop: 10,
+  },
+  modalSub: {
+    color: "#64748b",
+    textAlign: "center",
+    marginTop: 8,
+    marginBottom: 24,
+    fontSize: 16,
+  },
+  btnCelebrate: {
+    width: "100%",
+    backgroundColor: "#0ea5e9",
+    padding: 16,
+    borderRadius: 12,
+    alignItems: "center",
+  },
+  btnText: { color: "white", fontWeight: "bold", fontSize: 16 },
+});
