@@ -7,14 +7,19 @@
     "preview": {
       "distribution": "internal",
       "env": {
-        "NODE_OPTIONS": "--max-old-space-size=4096"
+        "NODE_OPTIONS": "--max-old-space-size=4096",
+        "npm_config_legacy_peer_deps": "true"
       }
     },
     "production": {
       "autoIncrement": true,
       "env": {
-        "NODE_OPTIONS": "--max-old-space-size=4096"
+        "NODE_OPTIONS": "--max-old-space-size=4096",
+        "npm_config_legacy_peer_deps": "true"
       }
     }
+  },
+  "cli": {
+    "appVersionSource": "remote"
   }
 }
